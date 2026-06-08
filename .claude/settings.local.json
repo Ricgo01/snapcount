@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(Expand-Archive -ErrorAction SilentlyContinue)",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\richi\\\\Documents\\\\YO\\\\redzone\\\\nfl\\\\logos\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"Directories created\")",
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\richi\\\\Documents\\\\YO\\\\redzone\" | Where-Object { !$_.PSIsContainer } | Select-Object -ExpandProperty FullName)"
+    ]
+  }
+}
