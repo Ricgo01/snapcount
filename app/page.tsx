@@ -1,66 +1,65 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import { Header } from '@/components/ui/Header';
+import { SectionTitle } from '@/components/ui/SectionTitle';
+import { TeamsRail } from '@/components/home/TeamsRail';
+import { DayGroup } from '@/components/home/DayGroup';
+import { MatchCard } from '@/components/cards/MatchCard';
+import { PlayoffBracket } from '@/components/playoffs/PlayoffBracket';
+import { getScoreboard, getLiveGames, getCurrentWeek } from '@/lib/services/scoreboard';
+import { TEAMS, getTeam, groupByDay, playoffPicture, CURRENT_SEASON } from '@/lib/data';
+import Link from 'next/link';
 
-export default function Home() {
+export default async function HomePage() {
+  const week = await getCurrentWeek(CURRENT_SEASON);
+  const [allGames, live] = await Promise.all([
+    getScoreboard(week, CURRENT_SEASON),
+    getLiveGames(CURRENT_SEASON),
+  ]);
+
+  const upcoming  = allGames.filter(g => g.status !== 'live');
+  const dayGroups = groupByDay(upcoming);
+  const picture   = playoffPicture(); // playoff bracket stays mock for MVP 1
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="screen">
+      <Header
+        title="Welcome"
+        subtitle={`NFL · Temporada ${CURRENT_SEASON} · Semana ${week}`}
+      />
+
+      <section className="block">
+        <SectionTitle right={<Link href="/season?week=playoffs" className="link-btn">Ver cuadro completo</Link>}>
+          Playoffs · Camino al Super Bowl
+        </SectionTitle>
+        <PlayoffBracket picture={picture} />
+      </section>
+
+      <section className="block">
+        <SectionTitle right={<Link href="/teams" className="link-btn">Ver todos</Link>}>
+          All teams
+        </SectionTitle>
+        <TeamsRail teams={TEAMS} />
+      </section>
+
+      {live.length > 0 && (
+        <section className="block">
+          <SectionTitle right={<span className="pill-live"><span className="live-dot" />{live.length} en vivo</span>}>
+            En vivo ahora
+          </SectionTitle>
+          <div className="cards-grid">
+            {live.map(g => {
+              const away = getTeam(g.awayId);
+              const home = getTeam(g.homeId);
+              if (!away || !home) return null;
+              return <MatchCard key={g.id} game={g} away={away} home={home} />;
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="block">
+        <SectionTitle>Next Games</SectionTitle>
+        {dayGroups.map(grp => <DayGroup key={grp.day} group={grp} />)}
+      </section>
     </div>
   );
 }

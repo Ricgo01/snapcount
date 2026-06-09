@@ -1,0 +1,28 @@
+name: Data refresh cron
+
+on:
+  schedule:
+    # Every 5 minutes (GitHub Actions minimum interval).
+    # Optimization for later: narrow to Thu/Sun/Mon during game hours to save
+    # free minutes and Vercel invocations.
+    - cron: '*/5 * * * *'
+
+  # Allow manual trigger from the GitHub Actions UI for testing
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    name: Invalidate ESPN cache
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: POST /api/refresh
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/refresh" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Refresh failed with status $STATUS"
+            exit 1
+          fi

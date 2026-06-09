@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="neb-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e2f5c"></stop>
+      <stop offset="0.55" stop-color="#0A2342"></stop>
+      <stop offset="1" stop-color="#06182f"></stop>
+    </linearGradient>
+    <pattern id="neb-stripes" width="48" height="48" patternTransform="rotate(-24)" patternUnits="userSpaceOnUse">
+      <rect width="3" height="48" x="0" fill="#ffffff" opacity="0.055"></rect>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="url(#neb-g)"></rect>
+  <rect width="1200" height="400" fill="url(#neb-stripes)"></rect>
+  <polygon points="760,0 1010,0 770,400 520,400" fill="#C60C30" opacity="0.92"></polygon>
+  <polygon points="1010,0 1075,0 835,400 770,400" fill="#B0B7BC" opacity="0.55"></polygon>
+  <polygon points="1075,0 1200,0 1200,400 835,400" fill="#0A2342" opacity="0.85"></polygon>
+</svg>
