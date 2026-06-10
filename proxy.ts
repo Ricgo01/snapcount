@@ -29,12 +29,17 @@ const ratelimit = hasUpstash
 export async function proxy(req: NextRequest) {
   if (!ratelimit) return NextResponse.next();
 
-  // Don't count speculative prefetches — only real navigations and API calls
+  // Count only document navigations and API calls. Client-side RSC payload
+  // fetches and link prefetches fire dozens of requests per page view, which
+  // made normal browsing trip the limit; the expensive units of work an
+  // abuser would flood are exactly full pages and API hits.
+  const isApi = req.nextUrl.pathname.startsWith('/api/');
+  const isDocument = (req.headers.get('accept') ?? '').includes('text/html');
   const isPrefetch =
     req.headers.get('next-router-prefetch') === '1' ||
     req.headers.get('purpose') === 'prefetch' ||
     (req.headers.get('sec-purpose') ?? '').includes('prefetch');
-  if (isPrefetch) return NextResponse.next();
+  if (isPrefetch || (!isApi && !isDocument)) return NextResponse.next();
 
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

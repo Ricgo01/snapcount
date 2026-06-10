@@ -87,8 +87,10 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
     games = stored?.games ?? [];
   }
 
-  // Season stats
-  const seasonStats = extractTeamStats(statsRaw);
+  // Season stats — hide until games have been played: during the offseason
+  // ESPN's stats endpoint still serves the *previous* season's numbers
+  const hasPlayed = !stored || stored.record.w + stored.record.l + stored.record.t > 0;
+  const seasonStats = hasPlayed ? extractTeamStats(statsRaw) : null;
 
   // Record: stored games first (kept fresh by the cron); standings as fallback
   let record    = stored?.record;

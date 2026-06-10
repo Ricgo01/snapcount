@@ -35,7 +35,7 @@ export default async function SeasonPage({ searchParams }: Props) {
   ]);
   const dayGroups = isPlayoffs ? [] : groupByDay(games);
   const subtitle    = isPlayoffs
-    ? `Temporada ${season} · proyección del cuadro de playoffs`
+    ? `Temporada ${season} · cuadro de playoffs`
     : `Temporada ${season} · partidos por semana`;
 
   return (
