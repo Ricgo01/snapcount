@@ -15,7 +15,8 @@ export interface EspnTeamRef {
 export interface EspnCompetitor {
   id: string;
   homeAway: 'home' | 'away';
-  score?: string;
+  /** Scoreboard returns a string; team schedule returns an object */
+  score?: string | { value: number; displayValue: string };
   team: EspnTeamRef;
 }
 
@@ -111,7 +112,10 @@ export interface EspnPlayerStatItem {
 export interface EspnPlayerAthlete {
   id: string;
   displayName: string;
-  shortName: string;
+  /** Not present in summary box scores — fall back to displayName */
+  shortName?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface EspnPlayerStatRow {
@@ -120,14 +124,54 @@ export interface EspnPlayerStatRow {
 }
 
 export interface EspnPlayerStatCategory {
-  name: string;  // "passing" | "rushing" | "receiving"
+  name: string;  // "passing" | "rushing" | "receiving" | "defensive" | "kicking" | ...
   labels: string[];
   athletes: EspnPlayerStatRow[];
+  totals?: string[];  // team totals matching labels
 }
 
 export interface EspnBoxScorePlayerTeam {
   team: Pick<EspnTeamRef, 'id' | 'abbreviation'>;
   statistics: EspnPlayerStatCategory[];
+}
+
+// ── Roster ────────────────────────────────────────────────────────────────
+
+export interface EspnRosterAthlete {
+  id: string;
+  fullName: string;
+  displayName: string;
+  jersey?: string;
+  position: { abbreviation: string; displayName: string; };
+}
+
+export interface EspnRosterGroup {
+  position: string;  // "offense" | "defense" | "specialTeam" | "injuredReserveOrOut" | ...
+  items: EspnRosterAthlete[];
+}
+
+export interface EspnRosterResponse {
+  athletes: EspnRosterGroup[];
+}
+
+// ── Team season statistics ─────────────────────────────────────────────────
+
+export interface EspnTeamStatItem {
+  name: string;
+  displayName: string;
+  displayValue: string;
+  perGameDisplayValue?: string;
+}
+
+export interface EspnTeamStatCategory {
+  name: string;  // "passing" | "rushing" | "defensive" | "scoring" | "miscellaneous" | ...
+  stats: EspnTeamStatItem[];
+}
+
+export interface EspnTeamStatsResponse {
+  results: {
+    stats: { categories: EspnTeamStatCategory[] };
+  };
 }
 
 export interface EspnSummaryResponse {

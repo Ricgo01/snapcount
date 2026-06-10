@@ -61,20 +61,15 @@ export interface GameStatsResult {
   away: TeamStats;
 }
 
-export interface PlayerRow {
-  name: string;
-  line?: string;
-  yds?: number;
-  td?: number;
-  int?: number;
-  car?: number;
-  rec?: number;
+export interface PlayerStatCategory {
+  name: string;       // ESPN category id: passing, rushing, receiving, defensive, ...
+  labels: string[];   // column headers as ESPN sends them: C/ATT, YDS, TD, ...
+  rows: { name: string; vals: string[] }[];  // one row per player
+  totals: string[];   // team totals row ([] when ESPN doesn't provide one)
 }
 
 export interface PlayerStatsTeam {
-  passing: { name: string; line: string; yds: number; td: number; int: number }[];
-  rushing: { name: string; car: number; yds: number; td: number }[];
-  receiving: { name: string; rec: number; yds: number; td: number }[];
+  categories: PlayerStatCategory[];
 }
 
 export interface PlayerStatsResult {
@@ -106,6 +101,10 @@ export interface PlayoffSeed {
 export interface PlayoffMatchup {
   a: PlayoffSeed | null;
   b: PlayoffSeed | null;
+  aScore?: number | null;
+  bScore?: number | null;
+  /** ESPN event ID — links the bracket box to /game/{id} when present */
+  gameId?: string;
 }
 
 export interface ConferenceBracket {
@@ -123,4 +122,8 @@ export interface PlayoffPicture {
   afc: ConferenceBracket;
   nfc: ConferenceBracket;
   champ: PlayoffSeed;
+  /** Super Bowl matchup with scores — a: AFC side, b: NFC side */
+  sb?: PlayoffMatchup;
+  /** true when built from real ESPN results (vs projected mock) */
+  real?: boolean;
 }

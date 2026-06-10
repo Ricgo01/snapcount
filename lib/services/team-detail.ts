@@ -1,16 +1,27 @@
 import { espnFetch } from '@/lib/espn/client';
-import { espnUrls, seasonToYear } from '@/lib/espn/endpoints';
+import { espnUrls, seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
 import { espnEventToGame } from '@/lib/espn/transform';
 import { getTeam, gamesByTeam, RECORDS, recordStr as mockRecordStr, CURRENT_SEASON } from '@/lib/data';
 import { getStandings } from './standings';
-import type { EspnScoreboardResponse, EspnTeamRef } from '@/lib/espn/types';
+import { getTeamSeason } from './history';
+import type { EspnScoreboardResponse, EspnTeamStatsResponse } from '@/lib/espn/types';
 import type { Team, Game, TeamRecord } from '@/types/nfl';
+
+export interface TeamSeasonStats {
+  passYardsPerGame: string;
+  rushYardsPerGame: string;
+  sacks: string;
+  touchdowns: string;
+  thirdDown: string;        // e.g. "90/224"
+  defInterceptions: string;
+}
 
 export interface TeamDetail {
   team: Team;
   record: TeamRecord;
   recordStr: string;
   games: Game[];
+  seasonStats: TeamSeasonStats | null;
 }
 
 /** ESPN team abbreviation → ESPN numeric team ID (needed for schedule endpoint) */
@@ -27,7 +38,8 @@ const ESPN_TEAM_IDS: Record<string, string> = {
 
 /**
  * Fetch team profile + season games.
- * Uses ESPN schedule endpoint; falls back to mock data on failure.
+ * Past seasons come from the Supabase game history (exact results + record);
+ * the current season uses ESPN live data. Falls back to mock data on failure.
  */
 export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Promise<TeamDetail | null> {
   const team = getTeam(abbr);
@@ -36,33 +48,85 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
   const year = seasonToYear(season);
   const espnId = ESPN_TEAM_IDS[abbr];
 
-  // Fetch games from ESPN schedule if we have an ESPN ID
-  let games: Game[] = [];
-  if (espnId) {
-    const raw = await espnFetch<{ events?: EspnScoreboardResponse['events'] }>(
-      espnUrls.teamSchedule(espnId, year),
-      `espn-team-${abbr}`,
-    );
-    if (raw?.events?.length) {
-      games = raw.events
-        .map(e => espnEventToGame(e, season))
-        .filter((g): g is Game => g !== null);
+  // Past seasons: serve from stored history. ESPN's stats/standings endpoints
+  // only cover the current season, so the record is computed from stored games.
+  if (year !== CURRENT_ESPN_YEAR) {
+    const stored = await getTeamSeason(abbr, year);
+    if (stored) {
+      const r = stored.record;
+      const recString = r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
+      return { team, record: r, recordStr: recString, games: stored.games, seasonStats: null };
     }
   }
 
-  // Fallback to mock games
+  // Parallel fetch: schedule + season stats (stats endpoint is current-season only)
+  const [scheduleRaw, statsRaw] = await Promise.all([
+    espnId
+      ? espnFetch<{ events?: EspnScoreboardResponse['events'] }>(
+          espnUrls.teamSchedule(espnId, year),
+          `espn-team-${abbr}`,
+        )
+      : Promise.resolve(null),
+    espnId && year === CURRENT_ESPN_YEAR
+      ? espnFetch<EspnTeamStatsResponse>(
+          espnUrls.teamStats(espnId),
+          `espn-team-stats-${abbr}`,
+          3600,
+        )
+      : Promise.resolve(null),
+  ]);
+
+  // Games
+  let games: Game[] = [];
+  if (scheduleRaw?.events?.length) {
+    games = scheduleRaw.events
+      .map(e => espnEventToGame(e, season))
+      .filter((g): g is Game => g !== null);
+  }
   if (!games.length) {
     games = gamesByTeam(abbr).filter(g => g.season === season);
   }
 
-  // Get record from standings service (which itself falls back to mock)
+  // Season stats
+  const seasonStats = extractTeamStats(statsRaw);
+
+  // Record from standings
   const standings = await getStandings(season);
-  const confData = standings.find(s => s.conf === team.conf);
-  const divData  = confData?.divisions.find(d => d.div === team.div);
-  const teamRow  = divData?.teams.find(t => t.id === abbr);
+  const confData  = standings.find(s => s.conf === team.conf);
+  const divData   = confData?.divisions.find(d => d.div === team.div);
+  const teamRow   = divData?.teams.find(t => t.id === abbr);
 
   const record    = teamRow?.record    ?? RECORDS[abbr];
   const recString = teamRow?.recordStr ?? mockRecordStr(abbr);
 
-  return { team, record, recordStr: recString, games };
+  return { team, record, recordStr: recString, games, seasonStats };
+}
+
+function extractTeamStats(raw: EspnTeamStatsResponse | null): TeamSeasonStats | null {
+  const cats = raw?.results?.stats?.categories;
+  if (!cats?.length) return null;
+
+  const getCat  = (name: string) => cats.find(c => c.name === name);
+  const getStat = (cat: ReturnType<typeof getCat>, stat: string) =>
+    cat?.stats?.find(s => s.name === stat);
+
+  const passing  = getCat('passing');
+  const rushing  = getCat('rushing');
+  const defense  = getCat('defensive');
+  const defInt   = getCat('defensiveInterceptions');
+  const misc     = getCat('miscellaneous');
+  const scoring  = getCat('scoring');
+
+  return {
+    passYardsPerGame: getStat(passing, 'netPassingYards')?.perGameDisplayValue ?? '—',
+    rushYardsPerGame: getStat(rushing, 'rushingYards')?.perGameDisplayValue ?? '—',
+    sacks:            getStat(defense, 'sacks')?.displayValue ?? '—',
+    touchdowns:       getStat(scoring, 'totalTouchdowns')?.displayValue ?? '—',
+    thirdDown: (() => {
+      const convs = getStat(misc, 'thirdDownConvs')?.displayValue ?? '—';
+      const atts  = getStat(misc, 'thirdDownAttempts')?.displayValue ?? '—';
+      return `${convs}/${atts}`;
+    })(),
+    defInterceptions: getStat(defInt, 'interceptions')?.displayValue ?? '—',
+  };
 }

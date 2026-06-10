@@ -5,19 +5,20 @@ import { DayGroup } from '@/components/home/DayGroup';
 import { MatchCard } from '@/components/cards/MatchCard';
 import { PlayoffBracket } from '@/components/playoffs/PlayoffBracket';
 import { getScoreboard, getLiveGames, getCurrentWeek } from '@/lib/services/scoreboard';
-import { TEAMS, getTeam, groupByDay, playoffPicture, CURRENT_SEASON } from '@/lib/data';
+import { getPlayoffPicture } from '@/lib/services/playoffs';
+import { TEAMS, getTeam, groupByDay, CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 
 export default async function HomePage() {
   const week = await getCurrentWeek(CURRENT_SEASON);
-  const [allGames, live] = await Promise.all([
+  const [allGames, live, picture] = await Promise.all([
     getScoreboard(week, CURRENT_SEASON),
     getLiveGames(CURRENT_SEASON),
+    getPlayoffPicture(CURRENT_SEASON),
   ]);
 
   const upcoming  = allGames.filter(g => g.status !== 'live');
   const dayGroups = groupByDay(upcoming);
-  const picture   = playoffPicture(); // playoff bracket stays mock for MVP 1
 
   return (
     <div className="screen">
@@ -26,12 +27,14 @@ export default async function HomePage() {
         subtitle={`NFL · Temporada ${CURRENT_SEASON} · Semana ${week}`}
       />
 
-      <section className="block">
-        <SectionTitle right={<Link href="/season?week=playoffs" className="link-btn">Ver cuadro completo</Link>}>
-          Playoffs · Camino al Super Bowl
-        </SectionTitle>
-        <PlayoffBracket picture={picture} />
-      </section>
+      {picture && (
+        <section className="block">
+          <SectionTitle right={<Link href="/season?week=playoffs" className="link-btn">Ver cuadro completo</Link>}>
+            Playoffs · Camino al Super Bowl
+          </SectionTitle>
+          <PlayoffBracket picture={picture} />
+        </section>
+      )}
 
       <section className="block">
         <SectionTitle right={<Link href="/teams" className="link-btn">Ver todos</Link>}>

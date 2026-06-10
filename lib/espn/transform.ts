@@ -8,6 +8,15 @@ import type {
   EspnSummaryResponse, EspnBoxScoreTeam,
 } from './types';
 
+// ── Score parsing ─────────────────────────────────────────────────────────
+// Scoreboard returns score as a string; team schedule returns an object.
+function parseScore(raw: string | { value: number; displayValue: string } | undefined): number | null {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw === 'string') return raw !== '' ? Number(raw) : null;
+  if (typeof raw === 'object' && 'value' in raw) return raw.value ?? null;
+  return null;
+}
+
 // ── Day/time helpers ───────────────────────────────────────────────────────
 
 /** Derive the NFL GameDay from a UTC ISO date string using Eastern Time (UTC-4 during season). */
@@ -59,7 +68,7 @@ const ABBR_NORM: Record<string, string> = {
   STL: 'LAR',   // (legacy St. Louis Rams)
 };
 
-function normalizeAbbr(abbr: string): string {
+export function normalizeAbbr(abbr: string): string {
   return ABBR_NORM[abbr] ?? abbr;
 }
 
@@ -88,8 +97,8 @@ export function espnEventToGame(event: EspnEvent, season: string): Game | null {
     awayId:   normalizeAbbr(awayComp.team.abbreviation),
     stadium:  comp.venue?.fullName ?? 'TBD',
     status,
-    homeScore: isFinal || isLive ? Number(homeComp.score ?? 0) : null,
-    awayScore: isFinal || isLive ? Number(awayComp.score ?? 0) : null,
+    homeScore: isFinal || isLive ? parseScore(homeComp.score) : null,
+    awayScore: isFinal || isLive ? parseScore(awayComp.score) : null,
     quarter:  isLive ? (comp.status.period || null) : null,
     clock:    isLive ? (comp.status.displayClock || null) : null,
   };
@@ -111,8 +120,12 @@ export function espnStandingsEntryToRecord(entry: EspnStandingsEntry): TeamRecor
 
 // ── Box score → team stats ─────────────────────────────────────────────────
 
-function statVal(team: EspnBoxScoreTeam, name: string): string {
-  return team.statistics?.find(s => s.name === name)?.displayValue ?? '0';
+function statVal(team: EspnBoxScoreTeam, ...names: string[]): string {
+  for (const name of names) {
+    const v = team.statistics?.find(s => s.name === name)?.displayValue;
+    if (v !== undefined) return v;
+  }
+  return '0';
 }
 
 export function espnBoxScoreToTeamStats(
@@ -129,7 +142,8 @@ export function espnBoxScoreToTeamStats(
 
   const toStats = (t: EspnBoxScoreTeam) => ({
     yards: Number(statVal(t, 'totalYards'))   || 0,
-    pass:  Number(statVal(t, 'passingYards')) || 0,
+    // ESPN names it netPassingYards in the summary box score
+    pass:  Number(statVal(t, 'netPassingYards', 'passingYards')) || 0,
     rush:  Number(statVal(t, 'rushingYards')) || 0,
     first: Number(statVal(t, 'firstDowns'))   || 0,
     poss:  statVal(t, 'possessionTime'),
@@ -141,6 +155,13 @@ export function espnBoxScoreToTeamStats(
 }
 
 // ── Box score → player stats ───────────────────────────────────────────────
+
+/** "P. Mahomes" — summary box scores don't include shortName. */
+function athleteName(a: { shortName?: string; displayName: string; firstName?: string; lastName?: string }): string {
+  if (a.shortName) return a.shortName;
+  if (a.firstName && a.lastName) return `${a.firstName[0]}. ${a.lastName}`;
+  return a.displayName;
+}
 
 export function espnBoxScoreToPlayerStats(
   summaryRes: EspnSummaryResponse,
@@ -154,53 +175,19 @@ export function espnBoxScoreToPlayerStats(
   const awayData = playerTeams.find(t => t.team.abbreviation === awayAbbr);
   if (!homeData || !awayData) return null;
 
-  const parseTeam = (teamData: typeof homeData) => {
-    const getCat = (name: string) =>
-      teamData.statistics.find(s => s.name === name);
-
-    const passingCat = getCat('passing');
-    const rushingCat = getCat('rushing');
-    const receivingCat = getCat('receiving');
-
-    // Helper: find label index
-    const idx = (labels: string[], label: string) => labels.indexOf(label);
-
-    const passing = (passingCat?.athletes ?? []).slice(0, 1).map(a => {
-      const s = a.stats;
-      const lbls = passingCat!.labels;
-      return {
-        name: a.athlete.shortName,
-        line: s[idx(lbls, 'C/ATT')] ?? s[0] ?? '0/0',
-        yds:  Number(s[idx(lbls, 'YDS')] ?? 0),
-        td:   Number(s[idx(lbls, 'TD')]  ?? 0),
-        int:  Number(s[idx(lbls, 'INT')] ?? 0),
-      };
-    });
-
-    const rushing = (rushingCat?.athletes ?? []).slice(0, 2).map(a => {
-      const s = a.stats;
-      const lbls = rushingCat!.labels;
-      return {
-        name: a.athlete.shortName,
-        car:  Number(s[idx(lbls, 'CAR')] ?? 0),
-        yds:  Number(s[idx(lbls, 'YDS')] ?? 0),
-        td:   Number(s[idx(lbls, 'TD')]  ?? 0),
-      };
-    });
-
-    const receiving = (receivingCat?.athletes ?? []).slice(0, 3).map(a => {
-      const s = a.stats;
-      const lbls = receivingCat!.labels;
-      return {
-        name: a.athlete.shortName,
-        rec:  Number(s[idx(lbls, 'REC')] ?? 0),
-        yds:  Number(s[idx(lbls, 'YDS')] ?? 0),
-        td:   Number(s[idx(lbls, 'TD')]  ?? 0),
-      };
-    });
-
-    return { passing, rushing, receiving };
-  };
+  // Generic: keep every category, every player and the totals row as-is.
+  // The UI renders each category from its labels, so new ESPN categories
+  // show up without code changes.
+  const parseTeam = (teamData: typeof homeData) => ({
+    categories: teamData.statistics
+      .filter(c => c.athletes?.length)
+      .map(c => ({
+        name:   c.name,
+        labels: c.labels ?? [],
+        rows:   c.athletes.map(a => ({ name: athleteName(a.athlete), vals: a.stats })),
+        totals: c.totals ?? [],
+      })),
+  });
 
   return { home: parseTeam(homeData), away: parseTeam(awayData) };
 }

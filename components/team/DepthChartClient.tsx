@@ -22,7 +22,7 @@ function DcPosition({ group }: { group: DepthGroup }) {
         </div>
         {group.players.map((p, i) => (
           <div className="dc-row" style={{ gridTemplateColumns: tmpl }} key={i}>
-            <span className="dc-num">{p.num}</span>
+            <span className="dc-num">{p.num || '–'}</span>
             <span className="dc-player">
               <b>{p.name}</b>
               <span className={`dc-depth${i === 0 ? ' starter' : ''}`}>{i === 0 ? 'Titular' : `Suplente ${i}`}</span>
@@ -39,11 +39,19 @@ export function DepthChartClient({ groups }: Props) {
   const [filter, setFilter] = useState('ALL');
   const shown = filter === 'ALL' ? groups : groups.filter(g => g.pos === filter);
 
+  if (!groups.length) {
+    return (
+      <section className="panel">
+        <h3 className="panel-h">Depth chart</h3>
+        <p className="muted">No hay roster guardado para esta temporada todavía.</p>
+      </section>
+    );
+  }
+
   return (
     <section className="panel">
       <div className="dc-toolbar">
         <h3 className="panel-h">Depth chart</h3>
-        <span className="dc-note">Stats de ejemplo · se conectarán a la API</span>
       </div>
       <div className="dc-filters" role="tablist" aria-label="Filtrar por posición">
         <button className={`dc-chip${filter === 'ALL' ? ' active' : ''}`} onClick={() => setFilter('ALL')}>Todos</button>

@@ -68,9 +68,26 @@ export function playerStats(g: Game): PlayerStatsResult | null {
     const comp = 18 + Math.floor(r() * 16);
     const att = comp + 4 + Math.floor(r() * 14);
     return {
-      passing: [{ name: roster.qb, line: `${comp}/${att}`, yds: 180 + Math.floor(r() * 200), td: Math.floor(r() * 4), int: Math.floor(r() * 3) }],
-      rushing: roster.rb.map((n) => ({ name: n, car: 8 + Math.floor(r() * 16), yds: 28 + Math.floor(r() * 95), td: Math.floor(r() * 2) })),
-      receiving: roster.wr.map((n) => ({ name: n, rec: 3 + Math.floor(r() * 8), yds: 25 + Math.floor(r() * 95), td: Math.floor(r() * 2) })),
+      categories: [
+        {
+          name: "passing",
+          labels: ["C/ATT", "YDS", "TD", "INT"],
+          rows: [{ name: roster.qb, vals: [`${comp}/${att}`, String(180 + Math.floor(r() * 200)), String(Math.floor(r() * 4)), String(Math.floor(r() * 3))] }],
+          totals: [],
+        },
+        {
+          name: "rushing",
+          labels: ["CAR", "YDS", "TD"],
+          rows: roster.rb.map((n) => ({ name: n, vals: [String(8 + Math.floor(r() * 16)), String(28 + Math.floor(r() * 95)), String(Math.floor(r() * 2))] })),
+          totals: [],
+        },
+        {
+          name: "receiving",
+          labels: ["REC", "YDS", "TD"],
+          rows: roster.wr.map((n) => ({ name: n, vals: [String(3 + Math.floor(r() * 8)), String(25 + Math.floor(r() * 95)), String(Math.floor(r() * 2))] })),
+          totals: [],
+        },
+      ],
     };
   };
   return { away: mk(g.awayId, 17), home: mk(g.homeId, 53) };

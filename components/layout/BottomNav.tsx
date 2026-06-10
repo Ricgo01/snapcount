@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
+import { ThemeToggle } from './ThemeToggle';
 
 const NAV = [
   { id: 'home',   label: 'Home',   icon: 'home'   as const, href: '/' },
@@ -25,6 +26,7 @@ export function BottomNav() {
           <span>{n.label}</span>
         </Link>
       ))}
+      <ThemeToggle compact />
     </nav>
   );
 }

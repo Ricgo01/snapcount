@@ -4,7 +4,7 @@ export const TEAMS: Team[] = [
   // AFC East
   { id: "BUF", city: "Buffalo", name: "Bills", conf: "AFC", div: "East", primary: "#00338D", secondary: "#C60C30", stadium: "Highmark Stadium" },
   { id: "MIA", city: "Miami", name: "Dolphins", conf: "AFC", div: "East", primary: "#008E97", secondary: "#FC4C02", stadium: "Hard Rock Stadium" },
-  { id: "NE",  city: "New England", name: "Patriots", conf: "AFC", div: "East", primary: "#0A2342", secondary: "#C60C30", stadium: "Gillette Stadium", logo: "/logos/NE.svg", banner: "/logos/NE-banner.svg" },
+  { id: "NE",  city: "New England", name: "Patriots", conf: "AFC", div: "East", primary: "#0A2342", secondary: "#C60C30", stadium: "Gillette Stadium", banner: "/logos/NE-banner.svg" },
   { id: "NYJ", city: "New York", name: "Jets", conf: "AFC", div: "East", primary: "#125740", secondary: "#1A1A1A", stadium: "MetLife Stadium" },
   // AFC North
   { id: "BAL", city: "Baltimore", name: "Ravens", conf: "AFC", div: "North", primary: "#241773", secondary: "#9E7C0C", stadium: "M&T Bank Stadium" },
@@ -52,7 +52,12 @@ export const DIVISIONS: Division[] = ["North", "South", "East", "West"];
 export const DAYS: GameDay[] = ["Jue", "Dom", "Lun"];
 export const DAY_FULL: Record<GameDay, string> = { Jue: "Jueves", Dom: "Domingo", Lun: "Lunes" };
 
-export const SEASONS: string[] = ["2025-26", "2024-25", "2023-24"];
-export const CURRENT_SEASON = "2025-26";
+// All seasons with game history (Supabase backfill + ESPN date ranges).
+// 2002 = first Texans season; all 32 current franchises exist from there.
+export const SEASONS = Array.from({ length: 2026 - 2002 + 1 }, (_, i) => {
+  const y = 2026 - i;
+  return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
+});
+export const CURRENT_SEASON = "2026-27";
 export const TOTAL_WEEKS = 18;
 export const CURRENT_WEEK = 14;

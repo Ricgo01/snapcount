@@ -1,7 +1,14 @@
+import type { Metadata } from 'next';
 import { Header } from '@/components/ui/Header';
 import { ConferenceColumn } from '@/components/teams/ConferenceColumn';
 import { getStandings } from '@/lib/services/standings';
 import { CURRENT_SEASON } from '@/lib/data';
+
+export const metadata: Metadata = {
+  title: 'Equipos NFL · standings por conferencia y división',
+  description:
+    'Los 32 equipos de la NFL con su récord actualizado, organizados por conferencia (AFC/NFC) y división. Accede al calendario, roster y stats de cada equipo.',
+};
 
 interface Props { searchParams: Promise<{ season?: string }> }
 

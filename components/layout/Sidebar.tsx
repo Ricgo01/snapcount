@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { SidebarActiveLink } from './SidebarActiveLink';
-import { CURRENT_SEASON } from '@/lib/data';
+import { ThemeToggle } from './ThemeToggle';
 
 const NAV = [
   { id: 'home',   label: 'Home',   icon: 'home'   as const, href: '/' },
@@ -13,8 +14,8 @@ export function Sidebar() {
   return (
     <nav className="sidebar">
       <Link href="/" className="brand">
-        <span className="brand-mark" />
-        <span className="brand-word">GRIDIRON</span>
+        <BrandMark size={30} />
+        <span className="brand-word">SNAPCOUNT</span>
       </Link>
       <div className="nav-items">
         {NAV.map(n => (
@@ -24,7 +25,15 @@ export function Sidebar() {
           </SidebarActiveLink>
         ))}
       </div>
-      <div className="sidebar-foot">Datos de ejemplo · {CURRENT_SEASON}</div>
+      <div className="sidebar-legal">
+        <span className="sidebar-legal-h">Disclaimer</span>
+        <p>
+          Unofficial app. Not affiliated with or endorsed by the NFL or any of
+          its teams. All team names, logos and trademarks are property of their
+          respective owners. Data provided by ESPN.
+        </p>
+      </div>
+      <ThemeToggle />
     </nav>
   );
 }

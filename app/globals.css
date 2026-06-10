@@ -78,17 +78,6 @@ a.match-card{ display:flex; }
   background:none; border:none; padding:8px 10px 18px; margin-bottom:6px;
   text-decoration:none; color:inherit;
 }
-.brand-mark{
-  width:30px; height:30px; border-radius:8px;
-  background:var(--accent);
-  position:relative; flex:none;
-  box-shadow:inset 0 0 0 3px rgba(255,255,255,.18);
-}
-.brand-mark::after{
-  content:""; position:absolute; inset:0; margin:auto;
-  width:13px; height:2.5px; background:#fff; border-radius:2px;
-  box-shadow:0 -5px 0 rgba(255,255,255,.55), 0 5px 0 rgba(255,255,255,.55);
-}
 .brand-word{ font-family:var(--font-disp); font-weight:700; font-size:19px; letter-spacing:.04em; }
 .nav-items{ display:flex; flex-direction:column; gap:4px; }
 .nav-item{
@@ -102,7 +91,27 @@ a.match-card{ display:flex; }
 .nav-item:hover{ background:var(--surface-2); color:var(--text); }
 .nav-item.active{ background:color-mix(in srgb, var(--accent) 12%, transparent); color:var(--accent); }
 .nav-item.active svg{ stroke:var(--accent); }
-.sidebar-foot{ margin-top:auto; padding:12px 14px; font-size:11.5px; color:var(--muted-2); letter-spacing:.02em; }
+.sidebar-legal{
+  margin-top:auto; padding:11px 14px 12px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  margin-bottom:10px;
+}
+.sidebar-legal-h{
+  display:block; font-family:var(--font-disp); font-weight:700; font-size:10px;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--muted-2); margin-bottom:5px;
+}
+.sidebar-legal p{ margin:0; font-size:10.5px; line-height:1.5; color:var(--muted-2); }
+.theme-toggle{
+  display:flex; align-items:center; gap:9px;
+  padding:9px 12px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  font-family:var(--font-body); font-size:12.5px; font-weight:600; color:var(--muted);
+  transition:border-color .14s, color .14s;
+}
+.theme-toggle:hover{ border-color:var(--accent); color:var(--text); }
+.theme-toggle.compact{ margin:0; padding:8px; border-radius:50%; }
+.theme-toggle.compact span{ display:none; }
+.sidebar-foot{ padding:12px 14px; font-size:11.5px; color:var(--muted-2); letter-spacing:.02em; }
 
 /* ------------------------- BOTTOM NAV ------------------------- */
 .bottom-nav{
@@ -264,6 +273,18 @@ a.match-card{ display:flex; }
   background:linear-gradient(90deg, var(--awayc), var(--homec));
 }
 [data-tint="on"] .match-card{ padding-top:17px; }
+/* Soft team-color glow on each side of the card */
+[data-tint="on"] .match-card::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(120% 100% at 0% 50%, color-mix(in srgb, var(--awayc) 13%, transparent), transparent 44%),
+    radial-gradient(120% 100% at 100% 50%, color-mix(in srgb, var(--homec) 13%, transparent), transparent 44%);
+}
+[data-theme="dark"][data-tint="on"] .match-card::after{
+  background:
+    radial-gradient(120% 100% at 0% 50%, color-mix(in srgb, var(--awayc) 26%, transparent), transparent 46%),
+    radial-gradient(120% 100% at 100% 50%, color-mix(in srgb, var(--homec) 26%, transparent), transparent 46%);
+}
 /* Stretched link — covers the whole card; team links float above at z-index 2 */
 .mc-game-link{
   position:absolute; inset:0; z-index:1; border-radius:inherit;
@@ -429,6 +450,10 @@ a.match-card{ display:flex; }
 .pstats-team{ display:flex; align-items:center; gap:9px; font-family:var(--font-disp); font-weight:700; font-size:16px; padding-bottom:12px; border-bottom:2px solid var(--border-2); }
 .pstats-cat{ display:flex; flex-direction:column; }
 .pstats-cat-h{ font-family:var(--font-disp); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin-bottom:4px; }
+.pstats-scroll{ overflow-x:auto; }
+.ps-total{ border-top:2px solid var(--border-2); }
+.ps-total .ps-name{ font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.ps-total .ps-stat{ font-weight:700; color:var(--text); }
 .ps-row{ display:grid; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); }
 .ps-row:last-child{ border-bottom:none; }
 .ps-name{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -465,8 +490,15 @@ a.match-card{ display:flex; }
   transition:transform .15s;
 }
 .video-play:hover{ transform:scale(1.06); }
+.video-link{ text-decoration:none; cursor:pointer; aspect-ratio:16/6; }
+.video-link:hover .video-play{ transform:scale(1.06); }
+.video-link:hover .ph-caption{ color:var(--text); }
 .ph-caption{ font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--muted); }
 .ph-stripes{ display:none; }
+.map-embed{
+  width:100%; aspect-ratio:16/9; border:1px solid var(--border);
+  border-radius:12px; display:block; background:var(--surface-2);
+}
 
 /* ------------------------- TEAM BANNER -------------------------- */
 .team-banner{ position:relative; border-radius:var(--radius); overflow:hidden; margin-top:2px; }
@@ -555,13 +587,17 @@ a.match-card{ display:flex; }
 .po-round-body{ flex:1; display:flex; flex-direction:column; justify-content:space-around; gap:16px; }
 
 .po-match{ background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+a.po-match-link{ display:block; transition:transform .14s, box-shadow .14s, border-color .14s; }
+a.po-match-link:hover{ transform:translateY(-2px); border-color:var(--accent); box-shadow:var(--shadow-lg); }
 .po-team{ display:flex; align-items:center; gap:10px; padding:9px 12px; }
 .po-team + .po-team{ border-top:1px solid var(--border); }
 .po-team.po-r{ flex-direction:row-reverse; text-align:right; }
 .po-seed{ font-family:var(--font-disp); font-weight:700; font-size:12px; color:var(--muted-2); width:15px; text-align:center; flex:none; font-variant-numeric:tabular-nums; }
 .po-name{ font-weight:600; font-size:14px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.po-score{ font-family:var(--font-disp); font-weight:700; font-size:14px; flex:none; font-variant-numeric:tabular-nums; color:var(--muted); }
 .po-team.win{ background:color-mix(in srgb,var(--accent) 13%, var(--surface)); }
 .po-team.win .po-seed{ color:var(--accent); }
+.po-team.win .po-score{ color:var(--text); }
 .po-team.out{ opacity:.5; }
 .po-empty .po-name{ color:var(--muted-2); font-weight:500; font-style:italic; }
 
