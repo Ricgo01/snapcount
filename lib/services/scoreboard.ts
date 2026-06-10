@@ -1,7 +1,7 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, weekDateRange, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
 import { espnEventToGame } from '@/lib/espn/transform';
-import { gamesByWeek, liveGames, CURRENT_SEASON } from '@/lib/data';
+import { CURRENT_SEASON } from '@/lib/data';
 import type { EspnScoreboardResponse } from '@/lib/espn/types';
 import type { Game } from '@/types/nfl';
 
@@ -10,7 +10,7 @@ import type { Game } from '@/types/nfl';
  * ESPN's `season`/`week` params are unreliable: they serve the most recently
  * *played* season, so an upcoming season's schedule never shows through them.
  * Date ranges work for past, current and future weeks alike.
- * Falls back to mock data if ESPN is unavailable.
+ * Returns [] when ESPN is unavailable — callers show an empty state.
  */
 export async function getScoreboard(
   week: number,
@@ -19,7 +19,7 @@ export async function getScoreboard(
   const year = seasonToYear(season);
 
   const range = weekDateRange(year, week);
-  if (!range) return gamesByWeek(week).filter(g => g.season === season);
+  if (!range) return [];
   const url = espnUrls.scoreboardByDates(range);
   const tag = `espn-scoreboard-${year}-w${week}`;
 
@@ -28,15 +28,9 @@ export async function getScoreboard(
     url, tag, year === CURRENT_ESPN_YEAR ? 300 : 3600,
   );
 
-  if (!raw?.events?.length) {
-    return gamesByWeek(week).filter(g => g.season === season);
-  }
-
-  const games = raw.events
+  return (raw?.events ?? [])
     .map(e => espnEventToGame(e, season))
     .filter((g): g is Game => g !== null);
-
-  return games.length ? games : gamesByWeek(week).filter(g => g.season === season);
 }
 
 /**
@@ -51,9 +45,7 @@ export async function getLiveGames(season = CURRENT_SEASON): Promise<Game[]> {
     30,
   );
 
-  if (!raw?.events?.length) return liveGames();
-
-  return raw.events
+  return (raw?.events ?? [])
     .map(e => espnEventToGame(e, season))
     .filter((g): g is Game => g !== null && g.status === 'live');
 }

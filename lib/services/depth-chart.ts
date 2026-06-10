@@ -1,6 +1,6 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
-import { teamDepthChart, CURRENT_SEASON } from '@/lib/data';
+import { CURRENT_SEASON } from '@/lib/data';
 import type { EspnRosterResponse, EspnRosterAthlete } from '@/lib/espn/types';
 import type { DepthGroup, DepthPlayer } from '@/types/nfl';
 
@@ -126,7 +126,7 @@ export async function getDepthChart(abbr: string, season = CURRENT_SEASON): Prom
   }
 
   const espnId = ESPN_TEAM_IDS[abbr];
-  if (!espnId) return teamDepthChart(abbr);
+  if (!espnId) return [];
 
   const raw = await espnFetch<EspnRosterResponse>(
     espnUrls.teamRoster(espnId),
@@ -134,8 +134,7 @@ export async function getDepthChart(abbr: string, season = CURRENT_SEASON): Prom
     3600,  // 1-hour cache; rosters don't change mid-game
   );
 
-  if (!raw?.athletes?.length) return teamDepthChart(abbr);
+  if (!raw?.athletes?.length) return [];
 
-  const groups = transformRoster(raw.athletes);
-  return groups.length ? groups : teamDepthChart(abbr);
+  return transformRoster(raw.athletes);
 }

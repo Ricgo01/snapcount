@@ -1,8 +1,8 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear } from '@/lib/espn/endpoints';
-import { espnStandingsEntryToRecord } from '@/lib/espn/transform';
-import { TEAMS, recordStr as mockRecordStr, RECORDS, teamsByConfDiv, DIVISIONS } from '@/lib/data';
-import type { EspnStandingsResponse, EspnStandingsEntry } from '@/lib/espn/types';
+import { espnStandingsEntryToRecord, normalizeAbbr } from '@/lib/espn/transform';
+import { TEAMS, DIVISIONS } from '@/lib/data';
+import type { EspnStandingsResponse } from '@/lib/espn/types';
 import type { Team, TeamRecord } from '@/types/nfl';
 
 export interface StandingsTeamRow extends Team {
@@ -20,23 +20,12 @@ export interface StandingsConference {
   divisions: StandingsDivision[];
 }
 
-/** ESPN conference name → our abbreviation */
-const CONF_MAP: Record<string, string> = {
-  'American Football Conference': 'AFC',
-  'National Football Conference': 'NFC',
-  'AFC': 'AFC',
-  'NFC': 'NFC',
-};
-
-/** ESPN division name → our division label ("AFC East" → "East") */
-function parseDivision(name: string): string {
-  const parts = name.split(' ');
-  return parts[parts.length - 1] ?? name; // last word: "East", "West", etc.
-}
+const ZERO_RECORD: TeamRecord = { w: 0, l: 0, t: 0, pf: 0, pa: 0 };
 
 /**
  * Returns standings grouped by conference → division.
- * Falls back to mock records if ESPN is unavailable.
+ * Records come from ESPN; teams without data show 0-0 (e.g. a season that
+ * hasn't started, or ESPN being down) — never fabricated records.
  */
 export async function getStandings(season: string): Promise<StandingsConference[]> {
   const year = seasonToYear(season);
@@ -45,32 +34,27 @@ export async function getStandings(season: string): Promise<StandingsConference[
     'espn-standings',
   );
 
-  // Build a record map from ESPN data
+  // Build a record map from ESPN data (keys normalized to our team IDs)
   const espnRecords: Record<string, TeamRecord> = {};
   if (raw?.children?.length) {
     for (const conf of raw.children) {
       for (const divGroup of conf.children ?? []) {
         for (const entry of divGroup.standings?.entries ?? []) {
-          const abbr = entry.team.abbreviation;
-          espnRecords[abbr] = espnStandingsEntryToRecord(entry);
+          espnRecords[normalizeAbbr(entry.team.abbreviation)] = espnStandingsEntryToRecord(entry);
         }
       }
     }
   }
-
-  const useEspn = Object.keys(espnRecords).length > 0;
 
   // Build our canonical standings structure using our own team data
   // (we keep our team objects; only records come from ESPN)
   return (['AFC', 'NFC'] as const).map(conf => ({
     conf,
     divisions: DIVISIONS.map(div => {
-      const teams = teamsByConfDiv(conf, div);
-      const rows: StandingsTeamRow[] = teams
+      const rows: StandingsTeamRow[] = TEAMS
+        .filter(t => t.conf === conf && t.div === div)
         .map(t => {
-          const record = useEspn
-            ? (espnRecords[t.id] ?? RECORDS[t.id])
-            : RECORDS[t.id];
+          const record = espnRecords[t.id] ?? ZERO_RECORD;
           return {
             ...t,
             record,

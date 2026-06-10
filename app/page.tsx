@@ -6,16 +6,22 @@ import { MatchCard } from '@/components/cards/MatchCard';
 import { PlayoffBracket } from '@/components/playoffs/PlayoffBracket';
 import { getScoreboard, getLiveGames, getCurrentWeek } from '@/lib/services/scoreboard';
 import { getPlayoffPicture } from '@/lib/services/playoffs';
-import { TEAMS, getTeam, groupByDay, CURRENT_SEASON } from '@/lib/data';
+import { TEAMS, SEASONS, getTeam, groupByDay, CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 
 export default async function HomePage() {
   const week = await getCurrentWeek(CURRENT_SEASON);
-  const [allGames, live, picture] = await Promise.all([
+  const prevSeason = SEASONS[1];
+  const [allGames, live, currentPicture, prevPicture] = await Promise.all([
     getScoreboard(week, CURRENT_SEASON),
     getLiveGames(CURRENT_SEASON),
     getPlayoffPicture(CURRENT_SEASON),
+    getPlayoffPicture(SEASONS[1]),
   ]);
+
+  // Before the current playoffs exist, show last season's real bracket
+  const picture       = currentPicture ?? prevPicture;
+  const playoffSeason = currentPicture ? CURRENT_SEASON : prevSeason;
 
   const upcoming  = allGames.filter(g => g.status !== 'live');
   const dayGroups = groupByDay(upcoming);
@@ -29,8 +35,8 @@ export default async function HomePage() {
 
       {picture && (
         <section className="block">
-          <SectionTitle right={<Link href="/season?week=playoffs" className="link-btn">Ver cuadro completo</Link>}>
-            Playoffs · Camino al Super Bowl
+          <SectionTitle right={<Link href={`/season?week=playoffs&season=${playoffSeason}`} className="link-btn">Ver cuadro completo</Link>}>
+            Playoffs {playoffSeason} · Camino al Super Bowl
           </SectionTitle>
           <PlayoffBracket picture={picture} />
         </section>

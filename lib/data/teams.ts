@@ -60,4 +60,3 @@ export const SEASONS = Array.from({ length: 2026 - 2002 + 1 }, (_, i) => {
 });
 export const CURRENT_SEASON = "2026-27";
 export const TOTAL_WEEKS = 18;
-export const CURRENT_WEEK = 14;

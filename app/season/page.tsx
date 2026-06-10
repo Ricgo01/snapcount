@@ -43,14 +43,24 @@ export default async function SeasonPage({ searchParams }: Props) {
       <Header title="Season" subtitle={subtitle}>
         <WeekSelector season={season} week={weekParam} />
       </Header>
-      {isPlayoffs && playoffPic ? (
+      {isPlayoffs ? (
+        playoffPic ? (
+          <section className="block">
+            <PlayoffBracket picture={playoffPic} />
+            <p className="po-note">Resultados reales de la temporada {season}. El cabeza de serie Nº1 descansa en Wild Card.</p>
+          </section>
+        ) : (
+          <section className="block">
+            <p className="muted">Los playoffs de la temporada {season} aún no se juegan.</p>
+          </section>
+        )
+      ) : dayGroups.length ? (
+        dayGroups.map(grp => <DayGroup key={grp.day} group={grp} />)
+      ) : (
         <section className="block">
-          <PlayoffBracket picture={playoffPic} />
-          <p className="po-note">Resultados reales de la temporada {season}. El cabeza de serie Nº1 descansa en Wild Card.</p>
+          <p className="muted">No hay partidos disponibles para esta semana.</p>
         </section>
-      ) : dayGroups.map(grp => (
-        <DayGroup key={grp.day} group={grp} />
-      ))}
+      )}
     </div>
   );
 }

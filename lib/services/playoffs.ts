@@ -1,7 +1,7 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, playoffDateRange, CURRENT_ESPN_YEAR, type PlayoffRound } from '@/lib/espn/endpoints';
 import { espnEventToGame, normalizeAbbr } from '@/lib/espn/transform';
-import { playoffPicture, getTeam, CURRENT_SEASON } from '@/lib/data';
+import { getTeam, CURRENT_SEASON } from '@/lib/data';
 import type { EspnScoreboardResponse, EspnEvent, EspnCompetitor } from '@/lib/espn/types';
 import type { PlayoffPicture, PlayoffSeed, PlayoffMatchup, ConferenceBracket, Game } from '@/types/nfl';
 
@@ -145,8 +145,9 @@ function buildConfBracket(
 
 /**
  * Fetch real playoff picture from ESPN for a given season.
- * - Current season with no playoff games played yet → mock projected bracket.
- * - Past season with no data (ESPN down) → null, callers show a fallback.
+ * Returns null when that season's playoffs haven't been played (or ESPN is
+ * down) — callers decide the fallback (e.g. home shows last season's real
+ * bracket; never fake data).
  */
 export async function getPlayoffPicture(season = CURRENT_SEASON): Promise<PlayoffPicture | null> {
   const year = seasonToYear(season);
@@ -157,10 +158,7 @@ export async function getPlayoffPicture(season = CURRENT_SEASON): Promise<Playof
 
   const allGames  = [...wcEvents, ...divEvents, ...cfEvents, ...sbEvents];
   const anyPlayed = allGames.some(e => e.competitions?.[0]?.status.type.state === 'post');
-  if (!anyPlayed) {
-    // Current season: regular season ongoing → projected bracket. Past: no data.
-    return year === CURRENT_ESPN_YEAR ? playoffPicture() : null;
-  }
+  if (!anyPlayed) return null;
 
   const rounds: PlayoffRoundGames = {
     wildCard:   wcEvents,

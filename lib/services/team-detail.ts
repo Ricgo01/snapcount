@@ -1,7 +1,7 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
 import { espnEventToGame } from '@/lib/espn/transform';
-import { getTeam, gamesByTeam, RECORDS, recordStr as mockRecordStr, CURRENT_SEASON } from '@/lib/data';
+import { getTeam, CURRENT_SEASON } from '@/lib/data';
 import { getStandings } from './standings';
 import { getTeamSeason } from './history';
 import type { EspnScoreboardResponse, EspnTeamStatsResponse } from '@/lib/espn/types';
@@ -84,7 +84,7 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
       .filter((g): g is Game => g !== null);
   }
   if (!games.length) {
-    games = gamesByTeam(abbr).filter(g => g.season === season);
+    games = stored?.games ?? [];
   }
 
   // Season stats
@@ -99,8 +99,8 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
     const confData  = standings.find(s => s.conf === team.conf);
     const divData   = confData?.divisions.find(d => d.div === team.div);
     const teamRow   = divData?.teams.find(t => t.id === abbr);
-    record    = teamRow?.record    ?? RECORDS[abbr];
-    recString = teamRow?.recordStr ?? mockRecordStr(abbr);
+    record    = teamRow?.record    ?? { w: 0, l: 0, t: 0, pf: 0, pa: 0 };
+    recString = teamRow?.recordStr ?? '0-0';
   }
 
   return { team, record, recordStr: recString!, games, seasonStats };

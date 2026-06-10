@@ -1,7 +1,7 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls } from '@/lib/espn/endpoints';
 import { espnEventToGame, espnBoxScoreToTeamStats, espnBoxScoreToPlayerStats } from '@/lib/espn/transform';
-import { GAMES, teamStats as mockTeamStats, playerStats as mockPlayerStats, CURRENT_SEASON } from '@/lib/data';
+import { CURRENT_SEASON } from '@/lib/data';
 import { getStoredGame } from './history';
 import { getStoredGameStats, storeGameStats } from './game-stats';
 import type { EspnSummaryResponse } from '@/lib/espn/types';
@@ -14,19 +14,12 @@ export interface GameDetail {
 }
 
 /**
- * Fetch full game detail (box score, stats) by ESPN event ID or mock ID.
- * Falls back to mock data when ESPN is unavailable.
+ * Fetch full game detail (box score, stats) by ESPN event ID.
+ * Reads stored data first; non-numeric IDs are unknown → 404.
  */
 export async function getGameDetail(id: string): Promise<GameDetail | null> {
-  // Determine if this is an ESPN numeric ID or our mock "w{week}-{away}-{home}" format
-  const isEspnId = /^\d+$/.test(id);
-
-  if (isEspnId) {
-    return getGameDetailFromEspn(id);
-  }
-
-  // Mock ID path
-  return getGameDetailFromMock(id);
+  if (!/^\d+$/.test(id)) return null;
+  return getGameDetailFromEspn(id);
 }
 
 async function getGameDetailFromEspn(eventId: string): Promise<GameDetail | null> {
@@ -111,14 +104,3 @@ async function getGameDetailFromEspn(eventId: string): Promise<GameDetail | null
   };
 }
 
-async function getGameDetailFromMock(id: string): Promise<GameDetail | null> {
-  const game = GAMES.find(g => g.id === id);
-  if (!game) return null;
-
-  const hasScore = game.status !== 'scheduled';
-  return {
-    game,
-    teamStats: hasScore ? mockTeamStats(game) : null,
-    playerStats: hasScore ? mockPlayerStats(game) : null,
-  };
-}
