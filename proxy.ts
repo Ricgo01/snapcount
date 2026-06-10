@@ -4,9 +4,10 @@ import { Redis } from '@upstash/redis';
 
 /**
  * Per-IP rate limiting for the whole app (pages + API).
- * 100 requests per 60 s sliding window — generous for human browsing
- * (including link prefetching) but stops request floods that would burn
- * Supabase/Vercel quotas and hammer ESPN.
+ * 300 requests per 60 s sliding window, with Next.js link prefetches
+ * exempted — pages like the home prefetch dozens of visible links, which
+ * would burn a tight budget during normal human browsing. Floods that
+ * would drain Supabase/Vercel quotas or hammer ESPN still get cut off.
  *
  * Fail-open by design: without Upstash env vars (local dev) or when Redis
  * errors, requests pass through. Volumetric L3/L4 DDoS is Vercel's job.
@@ -19,7 +20,7 @@ const hasUpstash = Boolean(
 const ratelimit = hasUpstash
   ? new Ratelimit({
       redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(100, '60 s'),
+      limiter: Ratelimit.slidingWindow(300, '60 s'),
       prefix: 'snapcount-rl',
       analytics: false,
     })
@@ -27,6 +28,13 @@ const ratelimit = hasUpstash
 
 export async function proxy(req: NextRequest) {
   if (!ratelimit) return NextResponse.next();
+
+  // Don't count speculative prefetches — only real navigations and API calls
+  const isPrefetch =
+    req.headers.get('next-router-prefetch') === '1' ||
+    req.headers.get('purpose') === 'prefetch' ||
+    (req.headers.get('sec-purpose') ?? '').includes('prefetch');
+  if (isPrefetch) return NextResponse.next();
 
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

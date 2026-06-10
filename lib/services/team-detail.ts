@@ -48,15 +48,15 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
   const year = seasonToYear(season);
   const espnId = ESPN_TEAM_IDS[abbr];
 
-  // Past seasons: serve from stored history. ESPN's stats/standings endpoints
-  // only cover the current season, so the record is computed from stored games.
-  if (year !== CURRENT_ESPN_YEAR) {
-    const stored = await getTeamSeason(abbr, year);
-    if (stored) {
-      const r = stored.record;
-      const recString = r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
-      return { team, record: r, recordStr: recString, games: stored.games, seasonStats: null };
-    }
+  // The record always comes from stored history: exact for past seasons and
+  // cron-updated for the current one (0-0 before kickoff — ESPN's standings
+  // serve the previous season during the offseason, which reads as stale).
+  const stored = await getTeamSeason(abbr, year);
+
+  if (year !== CURRENT_ESPN_YEAR && stored) {
+    const r = stored.record;
+    const recString = r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
+    return { team, record: r, recordStr: recString, games: stored.games, seasonStats: null };
   }
 
   // Parallel fetch: schedule + season stats (stats endpoint is current-season only)
@@ -90,16 +90,20 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
   // Season stats
   const seasonStats = extractTeamStats(statsRaw);
 
-  // Record from standings
-  const standings = await getStandings(season);
-  const confData  = standings.find(s => s.conf === team.conf);
-  const divData   = confData?.divisions.find(d => d.div === team.div);
-  const teamRow   = divData?.teams.find(t => t.id === abbr);
+  // Record: stored games first (kept fresh by the cron); standings as fallback
+  let record    = stored?.record;
+  let recString = record ? (record.t ? `${record.w}-${record.l}-${record.t}` : `${record.w}-${record.l}`) : undefined;
 
-  const record    = teamRow?.record    ?? RECORDS[abbr];
-  const recString = teamRow?.recordStr ?? mockRecordStr(abbr);
+  if (!record) {
+    const standings = await getStandings(season);
+    const confData  = standings.find(s => s.conf === team.conf);
+    const divData   = confData?.divisions.find(d => d.div === team.div);
+    const teamRow   = divData?.teams.find(t => t.id === abbr);
+    record    = teamRow?.record    ?? RECORDS[abbr];
+    recString = teamRow?.recordStr ?? mockRecordStr(abbr);
+  }
 
-  return { team, record, recordStr: recString, games, seasonStats };
+  return { team, record, recordStr: recString!, games, seasonStats };
 }
 
 function extractTeamStats(raw: EspnTeamStatsResponse | null): TeamSeasonStats | null {
