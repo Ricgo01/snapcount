@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    name: Lint & Typecheck
+    name: Lint, Typecheck & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -27,3 +27,8 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      # No secrets needed: Supabase/Upstash clients degrade to null when env
+      # vars are missing, so prerendered pages build with empty states.
+      - name: Build
+        run: npm run build

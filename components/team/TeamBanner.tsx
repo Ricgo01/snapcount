@@ -1,10 +1,10 @@
 import { TeamLogo } from '@/components/ui/TeamLogo';
 import { Icon } from '@/components/ui/Icon';
-import type { Team, TeamRecord } from '@/types/nfl';
+import type { Team } from '@/types/nfl';
 
-interface Props { team: Team; record: TeamRecord; recordStr: string; season: string; }
+interface Props { team: Team; recordStr: string; season: string; }
 
-export function TeamBanner({ team, record, recordStr, season }: Props) {
+export function TeamBanner({ team, recordStr, season }: Props) {
   const gradient = `linear-gradient(168deg, ${team.primary} 0%, ${team.secondary} 50%, var(--bg) 100%)`;
   const style = team.banner
     ? { backgroundImage: `url("${team.banner}")`, backgroundSize: 'cover', backgroundPosition: 'center' }

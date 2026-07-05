@@ -14,6 +14,7 @@ export function TeamLogo({ team, size = 44 }: Props) {
       className="team-logo team-logo--img"
       title={`${team.city} ${team.name}`}
       style={{ width: size, height: size }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- external ESPN CDN logos; next/image optimization would add Vercel cost for already-optimized assets */}
       <img src={team.logo ?? espnLogoUrl(team.id)} alt={`${team.city} ${team.name} logo`} draggable={false} />
     </span>
   );

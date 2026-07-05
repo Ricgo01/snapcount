@@ -35,11 +35,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
   ]);
   if (!detail) notFound();
 
-  const { team, record, recordStr, games, seasonStats } = detail;
+  const { team, recordStr, games, seasonStats } = detail;
   return (
     <div className="screen screen-detail">
       <Link href="/teams" className="detail-back"><Icon name="back" size={18} />Volver</Link>
-      <TeamBanner team={team} record={record} recordStr={recordStr} season={season} />
+      <TeamBanner team={team} recordStr={recordStr} season={season} />
       <TeamTabs team={team} games={games}
         season={season} seasonStats={seasonStats} depthChart={depthChart} playoffs={playoffs} />
     </div>

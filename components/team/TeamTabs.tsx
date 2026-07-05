@@ -39,7 +39,7 @@ export function TeamTabs({ team, games, season, seasonStats, depthChart, playoff
       )}
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
       <div className="detail-body">
-        {tab === 'games' && <TeamGames games={games} teamId={team.id} />}
+        {tab === 'games' && <TeamGames games={games} />}
         {tab === 'playoffs' && (
           <section className="panel">
             <h3 className="panel-h">Playoffs · {season}</h3>

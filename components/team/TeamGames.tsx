@@ -2,9 +2,9 @@ import { MatchCard } from '@/components/cards/MatchCard';
 import { getTeam } from '@/lib/data';
 import type { Game } from '@/types/nfl';
 
-interface Props { games: Game[]; teamId: string; }
+interface Props { games: Game[]; }
 
-export function TeamGames({ games, teamId }: Props) {
+export function TeamGames({ games }: Props) {
   const byWeek: Record<number, Game[]> = {};
   games.forEach(g => { (byWeek[g.week] = byWeek[g.week] || []).push(g); });
   return (
