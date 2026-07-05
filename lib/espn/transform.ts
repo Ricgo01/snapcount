@@ -24,10 +24,8 @@ export function dateToGameDay(dateStr: string): GameDay {
   const utcMs = new Date(dateStr).getTime();
   // Approximate ET: UTC-4 (EDT, covers Sep-Nov and Jan playoff games)
   const etDate = new Date(utcMs - 4 * 60 * 60 * 1000);
-  const dow = etDate.getUTCDay(); // 0=Sun, 1=Mon, ..., 4=Thu
-  if (dow === 4) return 'Jue';
-  if (dow === 1) return 'Lun';
-  return 'Dom'; // Sun (and rare Sat late-season games)
+  const days: GameDay[] = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  return days[etDate.getUTCDay()];
 }
 
 /** Format an ISO date string to "HH:MM" in ET. */
@@ -90,6 +88,7 @@ export function espnEventToGame(event: EspnEvent, season: string): Game | null {
     id:       event.id,          // ESPN event ID used as our primary ID
     espnId:   event.id,
     week:     event.week?.number ?? 1,
+    date:     comp.date,
     day:      dateToGameDay(comp.date),
     time:     dateToTimeET(comp.date),
     season,

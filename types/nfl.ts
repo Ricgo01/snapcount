@@ -1,7 +1,7 @@
 export type Conference = 'AFC' | 'NFC';
 export type Division   = 'North' | 'South' | 'East' | 'West';
 export type GameStatus = 'scheduled' | 'live' | 'final';
-export type GameDay    = 'Jue' | 'Dom' | 'Lun';
+export type GameDay    = 'Mié' | 'Jue' | 'Vie' | 'Sáb' | 'Dom' | 'Lun' | 'Mar';
 
 export interface Team {
   id: string;
@@ -20,6 +20,7 @@ export interface Game {
   id: string;
   espnId?: string;          // ESPN event ID — present when data comes from ESPN
   week: number;
+  date?: string;            // kickoff ISO datetime (UTC) — absent in legacy stored rows
   day: GameDay;
   time: string;
   season: string;

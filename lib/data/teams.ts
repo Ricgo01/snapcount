@@ -49,8 +49,12 @@ export const fullName = (t: Team): string => `${t.city} ${t.name}`;
 
 export const CONFERENCES: Conference[] = ["AFC", "NFC"];
 export const DIVISIONS: Division[] = ["North", "South", "East", "West"];
-export const DAYS: GameDay[] = ["Jue", "Dom", "Lun"];
-export const DAY_FULL: Record<GameDay, string> = { Jue: "Jueves", Dom: "Domingo", Lun: "Lunes" };
+// NFL-week chronological order (fallback when games carry no real date)
+export const DAYS: GameDay[] = ["Mié", "Jue", "Vie", "Sáb", "Dom", "Lun", "Mar"];
+export const DAY_FULL: Record<GameDay, string> = {
+  Mié: "Miércoles", Jue: "Jueves", Vie: "Viernes", Sáb: "Sábado",
+  Dom: "Domingo", Lun: "Lunes", Mar: "Martes",
+};
 
 // All seasons with game history (Supabase backfill + ESPN date ranges).
 // 2002 = first Texans season; all 32 current franchises exist from there.

@@ -3,12 +3,20 @@ import { DAYS } from './teams';
 
 export * from './teams';
 
-/** Group a list of games by NFL game day (Jue/Dom/Lun) in display order. */
+/** Group a list of games by NFL game day, in real kickoff order when dates exist. */
 export function groupByDay(list: Game[]) {
-  const groups: Partial<Record<GameDay, Game[]>> = {};
-  list.forEach((g) => {
-    if (!groups[g.day]) groups[g.day] = [];
-    groups[g.day]!.push(g);
+  const sorted = [...list].sort((a, b) =>
+    a.date && b.date ? new Date(a.date).getTime() - new Date(b.date).getTime() : 0,
+  );
+  const groups = new Map<GameDay, Game[]>();
+  sorted.forEach((g) => {
+    if (!groups.has(g.day)) groups.set(g.day, []);
+    groups.get(g.day)!.push(g);
   });
-  return DAYS.filter((d) => groups[d]).map((d) => ({ day: d, games: groups[d]! }));
+  // With dates, Map insertion order is already chronological; without them,
+  // fall back to the canonical NFL-week day order.
+  if (sorted.some((g) => g.date)) {
+    return [...groups.entries()].map(([day, games]) => ({ day, games }));
+  }
+  return DAYS.filter((d) => groups.has(d)).map((d) => ({ day: d, games: groups.get(d)! }));
 }

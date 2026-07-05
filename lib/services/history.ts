@@ -66,6 +66,7 @@ function rowToGame(row: GameRow): Game {
     id:        row.id,
     espnId:    row.id,
     week:      row.week,
+    date:      row.game_date ?? undefined,
     day:       row.day as GameDay,
     time:      row.time,
     season:    yearToSeason(row.season),
