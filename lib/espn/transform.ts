@@ -178,7 +178,7 @@ export function espnBoxScoreToPlayerStats(
   // The UI renders each category from its labels, so new ESPN categories
   // show up without code changes.
   const parseTeam = (teamData: typeof homeData) => ({
-    categories: teamData.statistics
+    categories: (teamData.statistics ?? [])
       .filter(c => c.athletes?.length)
       .map(c => ({
         name:   c.name,

@@ -22,6 +22,7 @@ interface RosterRow {
   jersey: number | null;
   depth: number;
   formation: string | null;
+  updated_at: string;
 }
 
 // ── CSV parsing (quote-aware, no deps) ──────────────────────────────────────
@@ -128,12 +129,21 @@ export async function backfillRosters(
   const db = supabaseAdmin();
   if (!db) return { year, teams: 0, players: 0 };
 
-  const res = await fetch(NFLVERSE_URL(year), { cache: 'no-store' });
-  if (!res.ok) {
-    console.warn(`[roster] nflverse ${res.status} for ${year}`);
+  let text: string;
+  try {
+    const res = await fetch(NFLVERSE_URL(year), {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) {
+      console.warn(`[roster] nflverse ${res.status} for ${year}`);
+      return { year, teams: 0, players: 0 };
+    }
+    text = await res.text();
+  } catch (err) {
+    console.warn(`[roster] nflverse fetch error for ${year}:`, err);
     return { year, teams: 0, players: 0 };
   }
-  const text = await res.text();
   const lines = text.split('\n');
   const header = parseCsvLine(lines[0].trim());
 
@@ -159,6 +169,7 @@ export async function backfillRosters(
     byKey.set(key, {
       season: year, team: p.team, position: p.pos, player_name: p.name,
       jersey: p.jersey, depth: p.depth, formation: p.formation,
+      updated_at: new Date().toISOString(),
     });
   }
   const rows = [...byKey.values()];

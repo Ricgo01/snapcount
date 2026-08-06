@@ -20,6 +20,7 @@ export async function espnFetch<T>(
     const res = await fetch(url, {
       next: { revalidate },
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.warn(`[ESPN] ${res.status} for ${url}`);

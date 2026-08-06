@@ -60,7 +60,7 @@ a.match-card{ display:flex; }
 /* ============================ SHELL ============================ */
 .app{
   display:grid;
-  grid-template-columns:236px minmax(0,1fr) 220px;
+  grid-template-columns:236px minmax(0,1fr);
   min-height:100vh;
   width:100%;
 }
@@ -134,28 +134,6 @@ a.match-card{ display:flex; }
 .content{ min-width:0; padding:0 clamp(16px,3vw,38px) 60px; }
 .screen{ width:100%; }
 .block{ margin-top:30px; }
-
-/* ----------------------------- AD SLOT -------------------------- */
-.gx-promo-rail{ padding:22px 16px 22px 0; }
-.gx-promo{
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-  flex:none;
-  border:1px solid var(--border-2); border-radius:12px;
-  background:
-    repeating-linear-gradient(135deg, transparent 0 9px, color-mix(in srgb,var(--muted-2) 7%, transparent) 9px 10px),
-    var(--surface-2);
-  color:var(--muted-2);
-  text-align:center;
-}
-.gx-promo-tag{
-  font-family:var(--font-disp); font-weight:600; font-size:10px; letter-spacing:.2em;
-  text-transform:uppercase; color:var(--muted-2);
-}
-.gx-promo-size{ font-family:ui-monospace,Menlo,monospace; font-size:11px; opacity:.75; }
-
-.gx-promo--sidebar{ position:sticky; top:22px; width:100%; max-width:200px; height:600px; margin:0 auto; }
-.gx-promo--inline{ width:300px; max-width:100%; height:250px; margin:30px auto 0; }
-.gx-promo--mobile{ display:none; width:100%; max-width:360px; height:100px; margin:24px auto 0; }
 
 /* -------------------------- PAGE HEADER ------------------------- */
 .page-header{
@@ -554,6 +532,7 @@ a.match-card{ display:flex; }
 .dc-pos-code{ font-family:var(--font-disp); font-weight:700; font-size:12px; letter-spacing:.03em; color:#fff; background:var(--accent); padding:3px 9px; border-radius:6px; }
 .dc-pos-label{ font-family:var(--font-disp); font-weight:600; font-size:15px; color:var(--text); }
 .dc-pos-count{ font-family:var(--font-disp); font-weight:600; font-size:12px; color:var(--muted-2); font-variant-numeric:tabular-nums; }
+.dc-scroll{ overflow-x:auto; }
 .dc-table{ display:flex; flex-direction:column; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
 .dc-row{ display:grid; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); }
 .dc-row:last-child{ border-bottom:none; }
@@ -580,6 +559,8 @@ a.match-card{ display:flex; }
 .po-conf-nfc{ background:#013369; }
 .po-conf-mid{ font-family:var(--font-disp); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
 
+.po-scroll-wrap{ position:relative; }
+.po-hint{ display:none; }
 .po-scroll{ overflow-x:auto; padding-bottom:6px; }
 .po-bracket{ display:flex; gap:16px; align-items:stretch; min-width:1080px; min-height:440px; }
 .po-round{ flex:1; display:flex; flex-direction:column; min-width:148px; }
@@ -612,11 +593,39 @@ a.po-match-link:hover{ transform:translateY(-2px); border-color:var(--accent); b
 
 .po-note{ font-size:12.5px; color:var(--muted); margin-top:18px; max-width:680px; }
 
+/* ------------------------- STATE PAGE (404 / error) -------------- */
+.state-page{
+  display:flex; align-items:center; justify-content:center;
+  min-height:60vh; padding:40px 20px;
+}
+.state-card{
+  max-width:420px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.state-card h1{ font-size:22px; font-weight:700; }
+.state-card p{ margin:0; }
+.state-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  margin-top:10px; padding:10px 22px; border-radius:var(--radius-sm);
+  background:var(--accent); color:#fff; font-weight:600; font-size:14px;
+  border:none; text-decoration:none; transition:opacity .14s;
+}
+.state-btn:hover{ opacity:.9; }
+
 /* ========================= RESPONSIVE ========================= */
+/* Bracket needs ~1080px + its own padding; below that (accounting for the
+   sidebar + content padding) it scrolls horizontally — show a hint so that
+   isn't missed on first paint. */
+@media (max-width:1400px){
+  .po-hint{ display:block; font-size:12px; color:var(--muted); margin:0 0 8px; text-align:right; }
+  .po-scroll-wrap::after{
+    content:''; position:absolute; top:0; right:0; bottom:6px; width:36px;
+    background:linear-gradient(90deg, transparent, var(--bg));
+    pointer-events:none;
+  }
+}
 @media (max-width:1280px){
   .app{ grid-template-columns:212px minmax(0,1fr); }
-  .gx-promo-rail{ display:none; }
-  .gx-promo--mobile{ display:flex; }
 }
 @media (max-width:1100px){
   .app{ grid-template-columns:200px minmax(0,1fr); }
@@ -627,6 +636,8 @@ a.po-match-link:hover{ transform:translateY(-2px); border-color:var(--accent); b
   .bottom-nav{ display:flex; }
   .content{ padding:0 16px 96px; }
   .conf-grid{ grid-template-columns:1fr; gap:26px; }
+  .section-title{ flex-wrap:wrap; row-gap:6px; }
+  .section-title h2{ white-space:normal; }
   .page-header{ padding-top:18px; }
   .gb-row{ padding:16px 12px 4px; gap:6px; }
   .gb-mark .team-logo{ width:84px !important; height:84px !important; font-size:28px !important; }
@@ -636,6 +647,7 @@ a.po-match-link:hover{ transform:translateY(-2px); border-color:var(--accent); b
   .tb-record{ width:100%; align-items:flex-start; text-align:left; margin-top:4px; }
   .bracket-ph{ grid-template-columns:repeat(2,1fr); }
   .cards-grid{ grid-template-columns:1fr; }
+  .team-games{ grid-template-columns:1fr; }
 }
 @media (max-width:420px){
   .gb-score span{ font-size:33px; }

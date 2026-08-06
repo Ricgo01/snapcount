@@ -1,9 +1,9 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, playoffDateRange, CURRENT_ESPN_YEAR, type PlayoffRound } from '@/lib/espn/endpoints';
-import { espnEventToGame, normalizeAbbr } from '@/lib/espn/transform';
+import { normalizeAbbr } from '@/lib/espn/transform';
 import { getTeam, CURRENT_SEASON } from '@/lib/data';
 import type { EspnScoreboardResponse, EspnEvent, EspnCompetitor } from '@/lib/espn/types';
-import type { PlayoffPicture, PlayoffSeed, PlayoffMatchup, ConferenceBracket, Game } from '@/types/nfl';
+import type { PlayoffPicture, PlayoffSeed, PlayoffMatchup, ConferenceBracket } from '@/types/nfl';
 
 // ESPN playoff week numbers (seasontype=3) — only valid for the current season
 const PO_WEEKS: Record<PlayoffRound, number> = { wildCard: 1, divisional: 2, confFinals: 3, superBowl: 5 };
@@ -184,18 +184,4 @@ export async function getPlayoffPicture(season = CURRENT_SEASON): Promise<Playof
   }
 
   return { afc, nfc, champ, sb, real: true };
-}
-
-/** Also export the raw playoff games as Game[] (for Season page bracket tab). */
-export async function getPlayoffGames(season = CURRENT_SEASON): Promise<Game[]> {
-  const year = seasonToYear(season);
-  const games: Game[] = [];
-  for (const round of PO_ROUNDS) {
-    const events = await fetchPlayoffRound(year, round);
-    for (const e of events) {
-      const g = espnEventToGame(e, season);
-      if (g) games.push(g);
-    }
-  }
-  return games;
 }

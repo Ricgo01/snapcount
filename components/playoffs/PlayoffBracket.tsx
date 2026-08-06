@@ -68,51 +68,54 @@ export function PlayoffBracket({ picture }: Props) {
         <span className="po-conf-mid">Camino al Super Bowl</span>
         <span className="po-conf po-conf-nfc">NFC</span>
       </div>
-      <div className="po-scroll">
-        <div className="po-bracket">
-          {/* AFC (izquierda → centro) */}
-          <PoRound label="Wild Card">
-            {afc.wild.map((m, i) => <PoMatch key={i} m={m} winner={afc.wildW[i]} side="l" />)}
-          </PoRound>
-          <PoRound label="Divisional">
-            {afc.divi.map((m, i) => <PoMatch key={i} m={m} winner={afc.diviWin[i]} side="l" />)}
-          </PoRound>
-          <PoRound label="Final AFC">
-            <PoMatch m={afc.final} winner={afc.champ} side="l" />
-          </PoRound>
+      <p className="po-hint">Desliza para ver más →</p>
+      <div className="po-scroll-wrap">
+        <div className="po-scroll">
+          <div className="po-bracket">
+            {/* AFC (izquierda → centro) */}
+            <PoRound label="Wild Card">
+              {afc.wild.map((m, i) => <PoMatch key={i} m={m} winner={afc.wildW[i]} side="l" />)}
+            </PoRound>
+            <PoRound label="Divisional">
+              {afc.divi.map((m, i) => <PoMatch key={i} m={m} winner={afc.diviWin[i]} side="l" />)}
+            </PoRound>
+            <PoRound label="Final AFC">
+              <PoMatch m={afc.final} winner={afc.champ} side="l" />
+            </PoRound>
 
-          {/* Super Bowl (centro) */}
-          <div className="po-sb">
-            <div className="po-sb-h"><Icon name="playoffs" size={20} />Super Bowl</div>
-            {sb?.gameId ? (
-              <Link href={`/game/${sb.gameId}`} className="po-sb-card po-match-link" aria-label="Ver detalle del Super Bowl">
-                <PoTeam s={afc.champ} win={champ.id === afc.champ.id} side="l" score={sb.aScore} />
-                <span className="po-sb-vs">vs</span>
-                <PoTeam s={nfc.champ} win={champ.id === nfc.champ.id} side="l" score={sb.bScore} />
-              </Link>
-            ) : (
-              <div className="po-sb-card">
-                <PoTeam s={afc.champ} win={champ.id === afc.champ.id} side="l" score={sb?.aScore} />
-                <span className="po-sb-vs">vs</span>
-                <PoTeam s={nfc.champ} win={champ.id === nfc.champ.id} side="l" score={sb?.bScore} />
+            {/* Super Bowl (centro) */}
+            <div className="po-sb">
+              <div className="po-sb-h"><Icon name="playoffs" size={20} />Super Bowl</div>
+              {sb?.gameId ? (
+                <Link href={`/game/${sb.gameId}`} className="po-sb-card po-match-link" aria-label="Ver detalle del Super Bowl">
+                  <PoTeam s={afc.champ} win={champ.id === afc.champ.id} side="l" score={sb.aScore} />
+                  <span className="po-sb-vs">vs</span>
+                  <PoTeam s={nfc.champ} win={champ.id === nfc.champ.id} side="l" score={sb.bScore} />
+                </Link>
+              ) : (
+                <div className="po-sb-card">
+                  <PoTeam s={afc.champ} win={champ.id === afc.champ.id} side="l" score={sb?.aScore} />
+                  <span className="po-sb-vs">vs</span>
+                  <PoTeam s={nfc.champ} win={champ.id === nfc.champ.id} side="l" score={sb?.bScore} />
+                </div>
+              )}
+              <div className="po-sb-champ">
+                <span className="po-sb-champ-k">{real ? 'Campeón' : 'Campeón proyectado'}</span>
+                <span className="po-sb-champ-v"><TeamLogo team={champTeam} size={22} />{champTeam.city} {champTeam.name}</span>
               </div>
-            )}
-            <div className="po-sb-champ">
-              <span className="po-sb-champ-k">{real ? 'Campeón' : 'Campeón proyectado'}</span>
-              <span className="po-sb-champ-v"><TeamLogo team={champTeam} size={22} />{champTeam.city} {champTeam.name}</span>
             </div>
-          </div>
 
-          {/* NFC (centro → derecha, espejado) */}
-          <PoRound label="Final NFC">
-            <PoMatch m={nfc.final} winner={nfc.champ} side="r" />
-          </PoRound>
-          <PoRound label="Divisional">
-            {nfc.divi.map((m, i) => <PoMatch key={i} m={m} winner={nfc.diviWin[i]} side="r" />)}
-          </PoRound>
-          <PoRound label="Wild Card">
-            {nfc.wild.map((m, i) => <PoMatch key={i} m={m} winner={nfc.wildW[i]} side="r" />)}
-          </PoRound>
+            {/* NFC (centro → derecha, espejado) */}
+            <PoRound label="Final NFC">
+              <PoMatch m={nfc.final} winner={nfc.champ} side="r" />
+            </PoRound>
+            <PoRound label="Divisional">
+              {nfc.divi.map((m, i) => <PoMatch key={i} m={m} winner={nfc.diviWin[i]} side="r" />)}
+            </PoRound>
+            <PoRound label="Wild Card">
+              {nfc.wild.map((m, i) => <PoMatch key={i} m={m} winner={nfc.wildW[i]} side="r" />)}
+            </PoRound>
+          </div>
         </div>
       </div>
     </>

@@ -1,4 +1,10 @@
 import { chromium } from 'playwright';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+
+const OUT = path.join(os.tmpdir(), 'snapcount-shots');
+fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -13,8 +19,9 @@ const shots = [
 
 for (const { url, file } of shots) {
   await page.goto(url, { waitUntil: 'networkidle' });
-  await page.screenshot({ path: `C:/Users/richi/AppData/Local/Temp/${file}` });
+  await page.screenshot({ path: path.join(OUT, file) });
   console.log('Done:', file);
 }
 
 await browser.close();
+console.log(`Screenshots saved to ${OUT}`);

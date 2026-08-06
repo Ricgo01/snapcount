@@ -36,7 +36,7 @@ interface GameRow {
 }
 
 /** 2025 → "2025-26" (our season string format) */
-export function yearToSeason(year: number): string {
+function yearToSeason(year: number): string {
   return `${year}-${String((year + 1) % 100).padStart(2, '0')}`;
 }
 
@@ -89,6 +89,7 @@ async function fetchScoreboard(url: string): Promise<EspnScoreboardResponse | nu
     const res = await fetch(url, {
       cache: 'no-store',
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.warn(`[history] ESPN ${res.status} for ${url}`);
@@ -101,37 +102,39 @@ async function fetchScoreboard(url: string): Promise<EspnScoreboardResponse | nu
   }
 }
 
-async function upsertEvents(events: EspnEvent[], year: number): Promise<number> {
+async function upsertEvents(events: EspnEvent[], year: number): Promise<{ count: number; failed: boolean }> {
   const db = supabaseAdmin();
-  if (!db || !events.length) return 0;
+  if (!db || !events.length) return { count: 0, failed: false };
 
   const rows = events
     .map(e => eventToRow(e, year))
     .filter((r): r is GameRow => r !== null);
-  if (!rows.length) return 0;
+  if (!rows.length) return { count: 0, failed: false };
 
   const { error } = await db.from('games').upsert(rows, { onConflict: 'id' });
   if (error) {
     console.error('[history] upsert failed:', error.message);
-    return 0;
+    return { count: 0, failed: true };
   }
-  return rows.length;
+  return { count: rows.length, failed: false };
 }
 
 /**
  * Upserts every game on the current ESPN scoreboard.
  * Cheap (one request) — safe to run on every /api/refresh tick.
  * Also returns the IDs of finished games so the caller can sync their stats.
+ * `failed` reflects a real Supabase write error (not "0 games on the board
+ * right now"), so /api/refresh can tell the two apart.
  */
-export async function syncScoreboard(): Promise<{ synced: number; finalIds: string[] }> {
+export async function syncScoreboard(): Promise<{ synced: number; finalIds: string[]; failed: boolean }> {
   const raw = await fetchScoreboard(espnUrls.scoreboard());
-  if (!raw?.events?.length) return { synced: 0, finalIds: [] };
+  if (!raw?.events?.length) return { synced: 0, finalIds: [], failed: false };
   const year = raw.season?.year ?? CURRENT_ESPN_YEAR;
-  const synced = await upsertEvents(raw.events, year);
+  const { count: synced, failed } = await upsertEvents(raw.events, year);
   const finalIds = raw.events
     .filter(e => e.competitions?.[0]?.status.type.state === 'post')
     .map(e => e.id);
-  return { synced, finalIds };
+  return { synced, finalIds, failed };
 }
 
 /**
@@ -153,7 +156,8 @@ export async function backfillSeason(
     const raw = await fetchScoreboard(espnUrls.scoreboardByDates(range));
     if (!raw?.events?.length) continue;
 
-    games += await upsertEvents(raw.events, year);
+    const { count } = await upsertEvents(raw.events, year);
+    games += count;
     weeks++;
   }
 
@@ -186,6 +190,8 @@ export interface TeamSeasonData {
  * so callers can fall back to ESPN/mock.
  */
 export async function getTeamSeason(abbr: string, year: number): Promise<TeamSeasonData | null> {
+  if (!/^[A-Z]{2,3}$/.test(abbr)) return null;
+
   const db = supabaseRead();
   if (!db) return null;
 
@@ -226,6 +232,8 @@ export async function getHeadToHead(
   teamB: string,
   limit = 10,
 ): Promise<Game[]> {
+  if (!/^[A-Z]{2,3}$/.test(teamA) || !/^[A-Z]{2,3}$/.test(teamB)) return [];
+
   const db = supabaseRead();
   if (!db) return [];
 

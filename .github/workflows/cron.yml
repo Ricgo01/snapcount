@@ -18,10 +18,13 @@ jobs:
     steps:
       - name: POST /api/refresh
         run: |
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST "${{ secrets.APP_URL }}/api/refresh" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
           echo "Response status: $STATUS"
+          echo "Response body: $BODY"
           if [ "$STATUS" != "200" ]; then
             echo "Refresh failed with status $STATUS"
             exit 1

@@ -49,6 +49,7 @@ export async function proxy(req: NextRequest) {
   try {
     const { success, reset } = await ratelimit.limit(ip);
     if (!success) {
+      console.warn('[ratelimit] blocked', { path: req.nextUrl.pathname, ip });
       const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
       return NextResponse.json(
         { error: 'Too many requests' },

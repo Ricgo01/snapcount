@@ -43,20 +43,28 @@ export async function getStoredGameStats(gameId: string): Promise<StoredGameStat
   return { teamStats: row.team_stats, playerStats: row.player_stats };
 }
 
-/** Persist parsed stats for a finished game. No-op without the admin client. */
+/**
+ * Persist parsed stats for a finished game. No-op without the admin client.
+ * Returns false only on a real Supabase write error (not on a no-op), so
+ * callers can distinguish "nothing to store" from "storing actually failed".
+ */
 export async function storeGameStats(
   gameId: string,
   teamStats: GameStatsResult | null,
   playerStats: PlayerStatsResult | null,
-): Promise<void> {
+): Promise<boolean> {
   const db = supabaseAdmin();
-  if (!db || (!teamStats && !playerStats)) return;
+  if (!db || (!teamStats && !playerStats)) return true;
 
   const { error } = await db.from('game_details').upsert(
     { game_id: gameId, team_stats: teamStats, player_stats: playerStats, updated_at: new Date().toISOString() },
     { onConflict: 'game_id' },
   );
-  if (error) console.warn('[game-stats] store failed:', error.message);
+  if (error) {
+    console.warn('[game-stats] store failed:', error.message);
+    return false;
+  }
+  return true;
 }
 
 /** Direct ESPN summary fetch, always fresh (used right after a game ends). */
@@ -65,6 +73,7 @@ async function fetchSummary(eventId: string): Promise<EspnSummaryResponse | null
     const res = await fetch(espnUrls.summary(eventId), {
       cache: 'no-store',
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       console.warn(`[game-stats] ESPN ${res.status} for summary ${eventId}`);
@@ -95,9 +104,9 @@ function parseSummary(raw: EspnSummaryResponse): StoredGameStats | null {
  * Called from /api/refresh with the current scoreboard's final game IDs —
  * each game costs one ESPN summary request, and only until stored.
  */
-export async function syncFinalGameStats(gameIds: string[]): Promise<number> {
+export async function syncFinalGameStats(gameIds: string[]): Promise<{ stored: number; failed: boolean }> {
   const db = supabaseAdmin();
-  if (!db || !gameIds.length) return 0;
+  if (!db || !gameIds.length) return { stored: 0, failed: false };
 
   const { data, error } = await db
     .from('game_details')
@@ -105,19 +114,20 @@ export async function syncFinalGameStats(gameIds: string[]): Promise<number> {
     .in('game_id', gameIds);
   if (error) {
     console.warn('[game-stats] sync lookup failed:', error.message);
-    return 0;
+    return { stored: 0, failed: true };
   }
   const have = new Set((data ?? []).map(r => r.game_id as string));
 
   let stored = 0;
+  let failed = false;
   for (const id of gameIds) {
     if (have.has(id)) continue;
     const raw = await fetchSummary(id);
     if (!raw) continue;
     const stats = parseSummary(raw);
     if (!stats) continue;
-    await storeGameStats(id, stats.teamStats, stats.playerStats);
-    stored++;
+    if (await storeGameStats(id, stats.teamStats, stats.playerStats)) stored++;
+    else failed = true;
   }
-  return stored;
+  return { stored, failed };
 }

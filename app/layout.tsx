@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BottomNav } from '@/components/layout/BottomNav';
-import { AdSlot } from '@/components/ui/AdSlot';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
@@ -40,9 +39,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main className="content">
             {children}
           </main>
-          <div className="gx-promo-rail">
-            <AdSlot variant="sidebar" />
-          </div>
           <BottomNav />
         </div>
       </body>

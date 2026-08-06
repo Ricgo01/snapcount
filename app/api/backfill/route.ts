@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backfillSeason } from '@/lib/services/history';
-import { CURRENT_ESPN_YEAR, EARLIEST_ESPN_YEAR } from '@/lib/espn/endpoints';
-import { checkCronAuth } from '@/lib/utils/cron-auth';
+import { requireCronAuth, parseSeasonYear, checkBackfillCooldown } from '@/lib/utils/cron-route';
 
 export const maxDuration = 300; // 18 sequential ESPN requests per season
 
@@ -15,25 +14,15 @@ export const maxDuration = 300; // 18 sequential ESPN requests per season
  *        -H "Authorization: Bearer <CRON_SECRET>"
  */
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get('authorization');
-  const secret = process.env.CRON_SECRET;
+  const authFail = requireCronAuth(req, 'backfill');
+  if (authFail) return authFail;
 
-  if (!secret) {
-    console.error('[backfill] CRON_SECRET env var is not set');
-    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
-  }
-  if (!checkCronAuth(auth, secret)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const parsed = parseSeasonYear(req.nextUrl.searchParams);
+  if (parsed instanceof NextResponse) return parsed;
+  const { year } = parsed;
 
-  const seasonParam = req.nextUrl.searchParams.get('season');
-  const year = seasonParam ? parseInt(seasonParam, 10) : CURRENT_ESPN_YEAR;
-  if (Number.isNaN(year) || year < EARLIEST_ESPN_YEAR || year > CURRENT_ESPN_YEAR) {
-    return NextResponse.json(
-      { error: `season must be between ${EARLIEST_ESPN_YEAR} and ${CURRENT_ESPN_YEAR}` },
-      { status: 400 },
-    );
-  }
+  const cooldown = await checkBackfillCooldown('backfill', 'games', year);
+  if (cooldown) return cooldown;
 
   const result = await backfillSeason(year);
   console.log('[backfill]', result);

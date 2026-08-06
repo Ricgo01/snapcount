@@ -7,6 +7,7 @@ interface Props { groups: DepthGroup[]; }
 function DcPosition({ group }: { group: DepthGroup }) {
   const cols = group.stats;
   const tmpl = `34px minmax(132px,1.6fr) ` + cols.map(() => 'minmax(50px,1fr)').join(' ');
+  const minWidth = 34 + 132 + cols.length * 50;
   return (
     <div className="dc-pos">
       <div className="dc-pos-head">
@@ -14,22 +15,24 @@ function DcPosition({ group }: { group: DepthGroup }) {
         <span className="dc-pos-label">{group.label}</span>
         <span className="dc-pos-count">{group.players.length}</span>
       </div>
-      <div className="dc-table">
-        <div className="dc-row dc-head" style={{ gridTemplateColumns: tmpl }}>
-          <span className="dc-num">#</span>
-          <span className="dc-player">Jugador</span>
-          {cols.map(c => <span className="dc-cell" key={c}>{c}</span>)}
-        </div>
-        {group.players.map((p, i) => (
-          <div className="dc-row" style={{ gridTemplateColumns: tmpl }} key={i}>
-            <span className="dc-num">{p.num || '–'}</span>
-            <span className="dc-player">
-              <b>{p.name}</b>
-              <span className={`dc-depth${i === 0 ? ' starter' : ''}`}>{i === 0 ? 'Titular' : `Suplente ${i}`}</span>
-            </span>
-            {cols.map(c => <span className="dc-cell" key={c}>{p.stats[c]}</span>)}
+      <div className="dc-scroll">
+        <div className="dc-table" style={{ minWidth }}>
+          <div className="dc-row dc-head" style={{ gridTemplateColumns: tmpl }}>
+            <span className="dc-num">#</span>
+            <span className="dc-player">Jugador</span>
+            {cols.map(c => <span className="dc-cell" key={c}>{c}</span>)}
           </div>
-        ))}
+          {group.players.map((p, i) => (
+            <div className="dc-row" style={{ gridTemplateColumns: tmpl }} key={i}>
+              <span className="dc-num">{p.num || '–'}</span>
+              <span className="dc-player">
+                <b>{p.name}</b>
+                <span className={`dc-depth${i === 0 ? ' starter' : ''}`}>{i === 0 ? 'Titular' : `Suplente ${i}`}</span>
+              </span>
+              {cols.map(c => <span className="dc-cell" key={c}>{p.stats[c]}</span>)}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
