@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    ignore:
+      # eslint-config-next (and its eslint-plugin-react dependency) still
+      # target the ESLint 9 rule-context API as of Next 16.3.0 — ESLint 10
+      # breaks `react/display-name` (contextOrFilename.getFilename is not a
+      # function). Remove this once eslint-config-next supports ESLint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
