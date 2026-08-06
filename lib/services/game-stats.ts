@@ -1,4 +1,4 @@
-import { espnUrls } from '@/lib/espn/endpoints';
+import { espnUrls, ESPN_USER_AGENT } from '@/lib/espn/endpoints';
 import { espnBoxScoreToTeamStats, espnBoxScoreToPlayerStats } from '@/lib/espn/transform';
 import { supabaseRead, supabaseAdmin } from '@/lib/supabase/server';
 import type { EspnSummaryResponse } from '@/lib/espn/types';
@@ -72,7 +72,7 @@ async function fetchSummary(eventId: string): Promise<EspnSummaryResponse | null
   try {
     const res = await fetch(espnUrls.summary(eventId), {
       cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      headers: { 'User-Agent': ESPN_USER_AGENT },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {

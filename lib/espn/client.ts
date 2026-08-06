@@ -1,3 +1,5 @@
+import { ESPN_USER_AGENT } from './endpoints';
+
 /**
  * espnFetch — thin fetch wrapper around ESPN's hidden API.
  *
@@ -19,7 +21,7 @@ export async function espnFetch<T>(
   try {
     const res = await fetch(url, {
       next: { revalidate },
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      headers: { 'User-Agent': ESPN_USER_AGENT },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {

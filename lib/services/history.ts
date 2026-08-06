@@ -1,4 +1,4 @@
-import { espnUrls, weekDateRange, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
+import { espnUrls, weekDateRange, CURRENT_ESPN_YEAR, ESPN_USER_AGENT } from '@/lib/espn/endpoints';
 import { espnEventToGame } from '@/lib/espn/transform';
 import { supabaseRead, supabaseAdmin } from '@/lib/supabase/server';
 import type { EspnEvent, EspnScoreboardResponse } from '@/lib/espn/types';
@@ -88,7 +88,7 @@ async function fetchScoreboard(url: string): Promise<EspnScoreboardResponse | nu
   try {
     const res = await fetch(url, {
       cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
+      headers: { 'User-Agent': ESPN_USER_AGENT },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {

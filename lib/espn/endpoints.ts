@@ -3,6 +3,12 @@
 const BASE    = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 const BASE_V2 = 'https://site.api.espn.com/apis/v2/sports/football/nfl';
 
+// A real browser UA — a custom "RedZoneStats/1.0" tag is an easy bot
+// signature to fingerprint/block. Kept in one place so all ESPN call sites
+// (client.ts, history.ts, game-stats.ts) stay in sync.
+export const ESPN_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
 export const espnUrls = {
   /** Current week scoreboard (no params) or specific week/season */
   scoreboard: (week?: number, season?: number) => {
