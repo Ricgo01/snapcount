@@ -1,0 +1,21 @@
+name: Test ESPN reachability from Actions
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl ESPN scoreboard directly
+        run: |
+          echo "Runner outbound IP:"
+          curl -s https://api.ipify.org
+          echo
+          echo "--- ESPN request ---"
+          curl -sD - \
+            -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
+            "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" \
+            -o body.json -w "\nHTTP_STATUS:%{http_code}\n"
+          echo "--- Body (first 500 chars) ---"
+          head -c 500 body.json
