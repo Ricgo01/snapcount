@@ -1,138 +1,93 @@
-import { espnFetch } from '@/lib/espn/client';
-import { espnUrls, seasonToYear, playoffDateRange, CURRENT_ESPN_YEAR, type PlayoffRound } from '@/lib/espn/endpoints';
-import { normalizeAbbr } from '@/lib/espn/transform';
+import { seasonToYear } from '@/lib/espn/endpoints';
+import { getPlayoffGames } from './history';
+import type { GameRow } from './history';
 import { getTeam, CURRENT_SEASON } from '@/lib/data';
-import type { EspnScoreboardResponse, EspnEvent, EspnCompetitor } from '@/lib/espn/types';
 import type { PlayoffPicture, PlayoffSeed, PlayoffMatchup, ConferenceBracket } from '@/types/nfl';
 
-// ESPN playoff week numbers (seasontype=3) — only valid for the current season
-const PO_WEEKS: Record<PlayoffRound, number> = { wildCard: 1, divisional: 2, confFinals: 3, superBowl: 5 };
-const PO_ROUNDS: PlayoffRound[] = ['wildCard', 'divisional', 'confFinals', 'superBowl'];
+type PlayoffRound = 'wildCard' | 'divisional' | 'confFinals' | 'superBowl';
+const ROUNDS: PlayoffRound[] = ['wildCard', 'divisional', 'confFinals', 'superBowl'];
 
 interface PlayoffRoundGames {
-  wildCard:   EspnEvent[];
-  divisional: EspnEvent[];
-  confFinals: EspnEvent[];
-  superBowl:  EspnEvent[];
-}
-
-async function fetchPlayoffRound(year: number, round: PlayoffRound): Promise<EspnEvent[]> {
-  let url: string;
-  if (year === CURRENT_ESPN_YEAR) {
-    url = `${espnUrls.scoreboard(PO_WEEKS[round], year)}&seasontype=3`;
-  } else {
-    // ESPN ignores `season` for historical playoff weeks — use date ranges
-    const range = playoffDateRange(year, round);
-    if (!range) return [];
-    url = espnUrls.scoreboardByDates(range);
-  }
-  const raw = await espnFetch<EspnScoreboardResponse>(url, `espn-playoffs-${year}-${round}`, 3600);
-  return (raw?.events ?? []).filter(e => {
-    // Off-season, ESPN's week params serve the *previous* season's playoffs —
-    // keep only events that actually belong to the requested year
-    if (e.season?.year !== undefined && e.season.year !== year) return false;
-    // Keep only games between two real NFL teams (drops the Pro Bowl)
-    const comps = e.competitions?.[0]?.competitors ?? [];
-    return comps.length === 2 && comps.every(c => getTeam(normalizeAbbr(c.team.abbreviation)));
-  });
+  wildCard:   GameRow[];
+  divisional: GameRow[];
+  confFinals: GameRow[];
+  superBowl:  GameRow[];
 }
 
 /** Determine which conference a team belongs to based on our static team data. */
 function teamConf(abbr: string): 'AFC' | 'NFC' | null {
-  return getTeam(normalizeAbbr(abbr))?.conf ?? null;
+  return getTeam(abbr)?.conf ?? null;
 }
 
-/** Convert ESPN event to a { winner, loser } pair (null if not finished). */
-function gameWinner(event: EspnEvent): { winner: string; loser: string } | null {
-  const comp = event.competitions?.[0];
-  if (!comp || comp.status.type.state !== 'post') return null;
-  const home = comp.competitors.find(c => c.homeAway === 'home');
-  const away = comp.competitors.find(c => c.homeAway === 'away');
-  if (!home || !away) return null;
-  const hs = Number(home.score ?? 0);
-  const as = Number(away.score ?? 0);
-  const winnerAbbr  = normalizeAbbr((hs >= as ? home : away).team.abbreviation);
-  const loserAbbr   = normalizeAbbr((hs >= as ? away : home).team.abbreviation);
-  return { winner: winnerAbbr, loser: loserAbbr };
+/** Convert a stored game row to a { winner, loser } pair (null if not finished). */
+function gameWinner(row: GameRow): { winner: string; loser: string } | null {
+  if (row.status !== 'final' || row.home_score === null || row.away_score === null) return null;
+  const homeWon = row.home_score >= row.away_score;
+  return {
+    winner: homeWon ? row.home_team : row.away_team,
+    loser:  homeWon ? row.away_team : row.home_team,
+  };
 }
 
-/** Numeric score from an ESPN competitor (string or object form). */
-function competitorScore(c: EspnCompetitor | undefined): number | null {
-  const raw = typeof c?.score === 'object' ? c.score.value : c?.score;
-  const n = Number(raw);
-  return raw !== undefined && raw !== '' && Number.isFinite(n) ? n : null;
-}
-
-/** Build a matchup (with scores when final) + winner from an ESPN event. */
-function toMatchup(event: EspnEvent): { matchup: PlayoffMatchup; winner: PlayoffSeed | null } {
-  const comp = event.competitions?.[0];
-  const home = comp?.competitors.find(c => c.homeAway === 'home');
-  const away = comp?.competitors.find(c => c.homeAway === 'away');
-  const finished = comp?.status.type.state === 'post';
-
-  // We use seed=0 as placeholder when we don't have seeding from ESPN
-  const makeSeed = (abbr: string): PlayoffSeed => ({ seed: 0, id: normalizeAbbr(abbr) });
-
-  const a: PlayoffSeed | null = away ? makeSeed(away.team.abbreviation) : null;
-  const b: PlayoffSeed | null = home ? makeSeed(home.team.abbreviation) : null;
-  const result = gameWinner(event);
+/** Build a matchup (with scores when final) + winner from a stored game row. */
+function toMatchup(row: GameRow): { matchup: PlayoffMatchup; winner: PlayoffSeed | null } {
+  const finished = row.status === 'final';
+  // We use seed=0 as placeholder — we don't store bracket seeding, same as before.
+  const makeSeed = (abbr: string): PlayoffSeed => ({ seed: 0, id: abbr });
+  const result = gameWinner(row);
 
   return {
     matchup: {
-      a, b,
-      aScore: finished ? competitorScore(away) : null,
-      bScore: finished ? competitorScore(home) : null,
-      gameId: event.id,
+      a: makeSeed(row.away_team),
+      b: makeSeed(row.home_team),
+      aScore: finished ? row.away_score : null,
+      bScore: finished ? row.home_score : null,
+      gameId: row.id,
     },
     winner: result ? makeSeed(result.winner) : null,
   };
 }
 
 /**
- * Build a ConferenceBracket from ESPN playoff games for one conference.
+ * Build a ConferenceBracket from stored playoff games for one conference.
  * Games are filtered by checking team conference membership.
  */
 function buildConfBracket(
   conf: 'AFC' | 'NFC',
   rounds: PlayoffRoundGames,
 ): ConferenceBracket {
-  // Filter games that belong to this conference (both teams in same conf, or 1 bye week)
-  const confGames = (events: EspnEvent[]) =>
-    events.filter(e => {
-      const comp = e.competitions?.[0];
-      const teams = comp?.competitors.map(c => normalizeAbbr(c.team.abbreviation)) ?? [];
-      return teams.some(t => teamConf(t) === conf);
-    });
+  const confGames = (rows: GameRow[]) =>
+    rows.filter(r => teamConf(r.home_team) === conf || teamConf(r.away_team) === conf);
 
-  const wcGames   = confGames(rounds.wildCard);
-  const divGames  = confGames(rounds.divisional);
-  const cfGames   = confGames(rounds.confFinals);
+  const wcGames  = confGames(rounds.wildCard);
+  const divGames = confGames(rounds.divisional);
+  const cfGames  = confGames(rounds.confFinals);
 
   // Wild Card matchups
-  const wild: PlayoffMatchup[]    = [];
-  const wildW: PlayoffSeed[]       = [];
-  for (const e of wcGames) {
-    const { matchup, winner } = toMatchup(e);
+  const wild: PlayoffMatchup[] = [];
+  const wildW: PlayoffSeed[]   = [];
+  for (const r of wcGames) {
+    const { matchup, winner } = toMatchup(r);
     wild.push(matchup);
     if (winner) wildW.push(winner);
   }
 
   // Divisional matchups
-  const divi: PlayoffMatchup[]    = [];
-  const diviWin: PlayoffSeed[]    = [];
-  for (const e of divGames) {
-    const { matchup, winner } = toMatchup(e);
+  const divi: PlayoffMatchup[] = [];
+  const diviWin: PlayoffSeed[] = [];
+  for (const r of divGames) {
+    const { matchup, winner } = toMatchup(r);
     divi.push(matchup);
     if (winner) diviWin.push(winner);
   }
 
   // Conference final
-  const cfEvent  = cfGames[0];
-  const cfResult = cfEvent ? toMatchup(cfEvent) : { matchup: { a: null, b: null }, winner: null };
+  const cfRow    = cfGames[0];
+  const cfResult = cfRow ? toMatchup(cfRow) : { matchup: { a: null, b: null }, winner: null };
   const champ    = cfResult.winner ?? { seed: 0, id: '' };
 
   return {
-    seeds:    [],          // ESPN doesn't expose seeding directly in scoreboard
+    seeds:    [],          // we don't store bracket seeding
     bye:      { seed: 1, id: '' },
     wild,
     wildW,
@@ -144,35 +99,35 @@ function buildConfBracket(
 }
 
 /**
- * Fetch real playoff picture from ESPN for a given season.
- * Returns null when that season's playoffs haven't been played (or ESPN is
- * down) — callers decide the fallback (e.g. home shows last season's real
- * bracket; never fake data).
+ * Playoff picture for a season, built from our own stored games (kept fresh
+ * by the nflverse-backed cron). Round is derived from `week`: for 18-week
+ * regular seasons (2021+) weeks 19-22 are WC/DIV/CON/SB in order; for
+ * 17-week seasons (pre-2021) it's weeks 18-21.
+ * Returns null when that season's playoffs haven't been played (or nothing
+ * is stored yet) — callers decide the fallback; never fake data.
  */
 export async function getPlayoffPicture(season = CURRENT_SEASON): Promise<PlayoffPicture | null> {
   const year = seasonToYear(season);
+  const rsWeeks = year >= 2021 ? 18 : 17;
 
-  const [wcEvents, divEvents, cfEvents, sbEvents] = await Promise.all(
-    PO_ROUNDS.map(r => fetchPlayoffRound(year, r)),
-  );
+  const rows = await getPlayoffGames(year);
+  if (!rows.length) return null;
 
-  const allGames  = [...wcEvents, ...divEvents, ...cfEvents, ...sbEvents];
-  const anyPlayed = allGames.some(e => e.competitions?.[0]?.status.type.state === 'post');
+  const byRound: PlayoffRoundGames = { wildCard: [], divisional: [], confFinals: [], superBowl: [] };
+  for (const row of rows) {
+    const round = ROUNDS[row.week - rsWeeks - 1];
+    if (round) byRound[round].push(row);
+  }
+
+  const anyPlayed = rows.some(r => r.status === 'final');
   if (!anyPlayed) return null;
 
-  const rounds: PlayoffRoundGames = {
-    wildCard:   wcEvents,
-    divisional: divEvents,
-    confFinals: cfEvents,
-    superBowl:  sbEvents,
-  };
-
-  const afc = buildConfBracket('AFC', rounds);
-  const nfc = buildConfBracket('NFC', rounds);
+  const afc = buildConfBracket('AFC', byRound);
+  const nfc = buildConfBracket('NFC', byRound);
 
   // Super Bowl — matchup oriented AFC (a) vs NFC (b), with scores
-  const sbEvent  = sbEvents[0];
-  const sbResult = sbEvent ? toMatchup(sbEvent) : null;
+  const sbRow    = byRound.superBowl[0];
+  const sbResult = sbRow ? toMatchup(sbRow) : null;
   const champ    = sbResult?.winner ?? afc.champ; // fallback to AFC conf champ
 
   let sb: PlayoffMatchup | undefined;

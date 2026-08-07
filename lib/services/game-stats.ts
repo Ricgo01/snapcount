@@ -1,15 +1,21 @@
-import { espnUrls } from '@/lib/espn/endpoints';
-import { espnBoxScoreToTeamStats, espnBoxScoreToPlayerStats } from '@/lib/espn/transform';
+import { fetchTeamWeekStats, fetchPlayerWeekStats, toGameStatsResult, toPlayerStatsTeam } from '@/lib/nflverse/stats';
 import { supabaseRead, supabaseAdmin } from '@/lib/supabase/server';
-import type { EspnSummaryResponse } from '@/lib/espn/types';
 import type { GameStatsResult, PlayerStatsResult } from '@/types/nfl';
+
+interface GameLookupRow {
+  id: string;
+  nflverse_game_id: string | null;
+  season: number;
+  home_team: string;
+  away_team: string;
+}
 
 /**
  * Per-game stats backed by Supabase (table: public.game_details).
  *
- * Cache-aside: game pages read stored stats first and fall back to the ESPN
- * summary, storing the parsed result for finished games. The /api/refresh
- * cron stores stats for games as they turn final (syncFinalGameStats).
+ * Cache-aside: game pages read stored stats first; the /api/refresh cron
+ * stores stats for games as they turn final (syncFinalGameStats), sourced
+ * from nflverse's per-season stats_team/stats_player files.
  */
 
 export interface StoredGameStats {
@@ -67,67 +73,69 @@ export async function storeGameStats(
   return true;
 }
 
-/** Direct ESPN summary fetch, always fresh (used right after a game ends). */
-async function fetchSummary(eventId: string): Promise<EspnSummaryResponse | null> {
-  try {
-    const res = await fetch(espnUrls.summary(eventId), {
-      cache: 'no-store',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RedZoneStats/1.0)' },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      console.warn(`[game-stats] ESPN ${res.status} for summary ${eventId}`);
-      return null;
-    }
-    return (await res.json()) as EspnSummaryResponse;
-  } catch (err) {
-    console.warn(`[game-stats] ESPN fetch error for summary ${eventId}:`, err);
-    return null;
-  }
-}
-
-/** Parse a summary into stats using the raw ESPN abbreviations it contains. */
-function parseSummary(raw: EspnSummaryResponse): StoredGameStats | null {
-  const comp = raw.header?.competitions?.[0];
-  const home = comp?.competitors.find(c => c.homeAway === 'home')?.team.abbreviation;
-  const away = comp?.competitors.find(c => c.homeAway === 'away')?.team.abbreviation;
-  if (!home || !away) return null;
-
-  const teamStats   = espnBoxScoreToTeamStats(raw, home, away);
-  const playerStats = espnBoxScoreToPlayerStats(raw, home, away);
-  if (!teamStats && !playerStats) return null;
-  return { teamStats, playerStats };
-}
-
 /**
  * Store stats for finished games that don't have them yet.
- * Called from /api/refresh with the current scoreboard's final game IDs —
- * each game costs one ESPN summary request, and only until stored.
+ * Called from /api/refresh with the current scoreboard's final game IDs.
+ * Fetches each distinct season's nflverse stats files once (not per game),
+ * then joins by `nflverse_game_id` — cheaper than the old one-request-per-game
+ * ESPN approach.
  */
 export async function syncFinalGameStats(gameIds: string[]): Promise<{ stored: number; failed: boolean }> {
   const db = supabaseAdmin();
   if (!db || !gameIds.length) return { stored: 0, failed: false };
 
-  const { data, error } = await db
+  const { data: have, error: haveErr } = await db
     .from('game_details')
     .select('game_id')
     .in('game_id', gameIds);
-  if (error) {
-    console.warn('[game-stats] sync lookup failed:', error.message);
+  if (haveErr) {
+    console.warn('[game-stats] sync lookup failed:', haveErr.message);
     return { stored: 0, failed: true };
   }
-  const have = new Set((data ?? []).map(r => r.game_id as string));
+  const already = new Set((have ?? []).map(r => r.game_id as string));
+  const pending = gameIds.filter(id => !already.has(id));
+  if (!pending.length) return { stored: 0, failed: false };
 
+  const { data: games, error: gamesErr } = await db
+    .from('games')
+    .select('id, nflverse_game_id, season, home_team, away_team')
+    .in('id', pending);
+  if (gamesErr) {
+    console.warn('[game-stats] games lookup failed:', gamesErr.message);
+    return { stored: 0, failed: true };
+  }
+  const rows = ((games ?? []) as GameLookupRow[]).filter(g => g.nflverse_game_id);
+  if (!rows.length) return { stored: 0, failed: false };
+
+  const seasons = [...new Set(rows.map(g => g.season))];
   let stored = 0;
   let failed = false;
-  for (const id of gameIds) {
-    if (have.has(id)) continue;
-    const raw = await fetchSummary(id);
-    if (!raw) continue;
-    const stats = parseSummary(raw);
-    if (!stats) continue;
-    if (await storeGameStats(id, stats.teamStats, stats.playerStats)) stored++;
-    else failed = true;
+
+  for (const season of seasons) {
+    const [teamStats, playerStats] = await Promise.all([
+      fetchTeamWeekStats(season),
+      fetchPlayerWeekStats(season),
+    ]);
+    if (!teamStats.length && !playerStats.length) continue;
+
+    for (const g of rows.filter(g => g.season === season)) {
+      const teamRows = teamStats.filter(r => r.gameId === g.nflverse_game_id);
+      const home = teamRows.find(r => r.team === g.home_team);
+      const away = teamRows.find(r => r.team === g.away_team);
+      const teamResult = home && away ? toGameStatsResult(home, away) : null;
+
+      const gamePlayers = playerStats.filter(r => r.gameId === g.nflverse_game_id);
+      const homePlayers = gamePlayers.filter(p => p.team === g.home_team);
+      const awayPlayers = gamePlayers.filter(p => p.team === g.away_team);
+      const playerResult: PlayerStatsResult | null = homePlayers.length && awayPlayers.length
+        ? { home: toPlayerStatsTeam(homePlayers), away: toPlayerStatsTeam(awayPlayers) }
+        : null;
+
+      if (!teamResult && !playerResult) continue;
+      if (await storeGameStats(g.id, teamResult, playerResult)) stored++;
+      else failed = true;
+    }
   }
+
   return { stored, failed };
 }

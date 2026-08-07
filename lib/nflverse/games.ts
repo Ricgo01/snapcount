@@ -58,6 +58,7 @@ function rowToGameRow(cols: string[], idx: Record<string, number>): GameRow | nu
 
   return {
     id,
+    nflverse_game_id: get('game_id') || null,
     season,
     week,
     season_type: seasonType,

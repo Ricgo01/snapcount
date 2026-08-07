@@ -126,26 +126,6 @@ export interface EspnRosterResponse {
   athletes: EspnRosterGroup[];
 }
 
-// ── Team season statistics ─────────────────────────────────────────────────
-
-export interface EspnTeamStatItem {
-  name: string;
-  displayName: string;
-  displayValue: string;
-  perGameDisplayValue?: string;
-}
-
-export interface EspnTeamStatCategory {
-  name: string;  // "passing" | "rushing" | "defensive" | "scoring" | "miscellaneous" | ...
-  stats: EspnTeamStatItem[];
-}
-
-export interface EspnTeamStatsResponse {
-  results: {
-    stats: { categories: EspnTeamStatCategory[] };
-  };
-}
-
 export interface EspnSummaryResponse {
   boxscore?: {
     teams?: EspnBoxScoreTeam[];

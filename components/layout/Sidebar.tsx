@@ -30,7 +30,7 @@ export function Sidebar() {
         <p>
           Unofficial app. Not affiliated with or endorsed by the NFL or any of
           its teams. All team names, logos and trademarks are property of their
-          respective owners. Data provided by ESPN.
+          respective owners. Data provided by NFL-verse.
         </p>
       </div>
       <ThemeToggle />

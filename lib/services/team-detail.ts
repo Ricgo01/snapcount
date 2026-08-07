@@ -1,9 +1,9 @@
-import { espnFetch } from '@/lib/espn/client';
-import { espnUrls, seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
+import { seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
 import { getTeam, CURRENT_SEASON } from '@/lib/data';
 import { getStandings } from './standings';
 import { getTeamSeason } from './history';
-import type { EspnTeamStatsResponse } from '@/lib/espn/types';
+import { fetchTeamSeasonStats } from '@/lib/nflverse/stats';
+import type { TeamStatRow } from '@/lib/nflverse/stats';
 import type { Team, Game, TeamRecord } from '@/types/nfl';
 
 export interface TeamSeasonStats {
@@ -11,7 +11,7 @@ export interface TeamSeasonStats {
   rushYardsPerGame: string;
   sacks: string;
   touchdowns: string;
-  thirdDown: string;        // e.g. "90/224"
+  thirdDown: string;        // not available from nflverse's per-game counting stats
   defInterceptions: string;
 }
 
@@ -23,47 +23,25 @@ export interface TeamDetail {
   seasonStats: TeamSeasonStats | null;
 }
 
-/** ESPN team abbreviation → ESPN numeric team ID (needed for schedule endpoint) */
-const ESPN_TEAM_IDS: Record<string, string> = {
-  BUF: '2',  MIA: '15', NE: '17',  NYJ: '20',
-  BAL: '33', CIN: '4',  CLE: '5',  PIT: '23',
-  HOU: '34', IND: '11', JAX: '30', TEN: '10',
-  DEN: '7',  KC: '12',  LV: '13',  LAC: '24',
-  DAL: '6',  NYG: '19', PHI: '21', WAS: '28',
-  CHI: '3',  DET: '8',  GB: '9',   MIN: '16',
-  ATL: '1',  CAR: '29', NO: '18',  TB: '27',
-  ARI: '22', LAR: '14', SF: '25',  SEA: '26',
-};
-
 /**
- * Fetch team profile + season games.
- * Schedule and record always come from the Supabase game history — the
- * nflverse-backed cron keeps the current season fresh too, so there's no
- * more "past vs current season" branch. Season stats (yards, sacks, etc.)
- * are a separate, still-ESPN-backed endpoint that degrades to null safely.
+ * Fetch team profile + season games + season stats.
+ * Everything comes from the Supabase game history and nflverse's per-season
+ * stats files, both kept fresh by the cron — no more "past vs current
+ * season" branch, no more ESPN dependency for any of it.
  */
 export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Promise<TeamDetail | null> {
   const team = getTeam(abbr);
   if (!team) return null;
 
   const year = seasonToYear(season);
-  const espnId = ESPN_TEAM_IDS[abbr];
-
   const stored = await getTeamSeason(abbr, year);
   const games: Game[] = stored?.games ?? [];
 
-  const statsRaw = espnId && year === CURRENT_ESPN_YEAR
-    ? await espnFetch<EspnTeamStatsResponse>(
-        espnUrls.teamStats(espnId),
-        `espn-team-stats-${abbr}`,
-        3600,
-      )
+  // Season stats — hide until games have been played (0-0 before kickoff).
+  const gamesPlayed = stored ? stored.record.w + stored.record.l + stored.record.t : 0;
+  const seasonStats = year === CURRENT_ESPN_YEAR && gamesPlayed > 0
+    ? extractTeamStats(await fetchTeamSeasonStats(year), abbr, gamesPlayed)
     : null;
-
-  // Season stats — hide until games have been played: during the offseason
-  // ESPN's stats endpoint still serves the *previous* season's numbers
-  const hasPlayed = !stored || stored.record.w + stored.record.l + stored.record.t > 0;
-  const seasonStats = hasPlayed ? extractTeamStats(statsRaw) : null;
 
   // Record: stored games first (kept fresh by the cron); standings as fallback
   let record    = stored?.record;
@@ -81,31 +59,16 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
   return { team, record, recordStr: recString!, games, seasonStats };
 }
 
-function extractTeamStats(raw: EspnTeamStatsResponse | null): TeamSeasonStats | null {
-  const cats = raw?.results?.stats?.categories;
-  if (!cats?.length) return null;
-
-  const getCat  = (name: string) => cats.find(c => c.name === name);
-  const getStat = (cat: ReturnType<typeof getCat>, stat: string) =>
-    cat?.stats?.find(s => s.name === stat);
-
-  const passing  = getCat('passing');
-  const rushing  = getCat('rushing');
-  const defense  = getCat('defensive');
-  const defInt   = getCat('defensiveInterceptions');
-  const misc     = getCat('miscellaneous');
-  const scoring  = getCat('scoring');
+function extractTeamStats(rows: TeamStatRow[], abbr: string, gamesPlayed: number): TeamSeasonStats | null {
+  const row = rows.find(r => r.team === abbr);
+  if (!row) return null;
 
   return {
-    passYardsPerGame: getStat(passing, 'netPassingYards')?.perGameDisplayValue ?? '—',
-    rushYardsPerGame: getStat(rushing, 'rushingYards')?.perGameDisplayValue ?? '—',
-    sacks:            getStat(defense, 'sacks')?.displayValue ?? '—',
-    touchdowns:       getStat(scoring, 'totalTouchdowns')?.displayValue ?? '—',
-    thirdDown: (() => {
-      const convs = getStat(misc, 'thirdDownConvs')?.displayValue ?? '—';
-      const atts  = getStat(misc, 'thirdDownAttempts')?.displayValue ?? '—';
-      return `${convs}/${atts}`;
-    })(),
-    defInterceptions: getStat(defInt, 'interceptions')?.displayValue ?? '—',
+    passYardsPerGame: (row.passingYards / gamesPlayed).toFixed(1),
+    rushYardsPerGame: (row.rushingYards / gamesPlayed).toFixed(1),
+    sacks:            String(row.defSacks),
+    touchdowns:       String(row.passingTdsTotal + row.rushingTdsTotal + row.receivingTdsTotal + row.defTds + row.specialTeamsTds),
+    thirdDown:        '—',
+    defInterceptions: String(row.defInterceptions),
   };
 }

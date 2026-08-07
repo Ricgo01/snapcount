@@ -20,6 +20,7 @@ import type { Game, GameDay, GameStatus, TeamRecord } from '@/types/nfl';
 
 export interface GameRow {
   id: string;
+  nflverse_game_id?: string | null;
   season: number;
   week: number;
   season_type: number;
@@ -223,6 +224,25 @@ export async function getCurrentWeekNumber(year: number): Promise<number> {
     else break;
   }
   return current;
+}
+
+/** Raw playoff-round rows for a season (season_type=3) — used to build the bracket. */
+export async function getPlayoffGames(year: number): Promise<GameRow[]> {
+  const db = supabaseRead();
+  if (!db) return [];
+
+  const { data, error } = await db
+    .from('games')
+    .select('*')
+    .eq('season', year)
+    .eq('season_type', 3)
+    .order('week', { ascending: true });
+
+  if (error) {
+    console.warn('[history] getPlayoffGames failed:', error.message);
+    return [];
+  }
+  return (data ?? []) as GameRow[];
 }
 
 /** Previous meetings between two teams (newest first, finals only). */
