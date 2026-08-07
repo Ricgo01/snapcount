@@ -24,7 +24,7 @@ function DcPosition({ group }: { group: DepthGroup }) {
           </div>
           {group.players.map((p, i) => (
             <div className="dc-row" style={{ gridTemplateColumns: tmpl }} key={i}>
-              <span className="dc-num">{p.num || '–'}</span>
+              <span className="dc-num">{p.num ?? '–'}</span>
               <span className="dc-player">
                 <b>{p.name}</b>
                 <span className={`dc-depth${i === 0 ? ' starter' : ''}`}>{i === 0 ? 'Titular' : `Suplente ${i}`}</span>
@@ -46,7 +46,7 @@ export function DepthChartClient({ groups }: Props) {
     return (
       <section className="panel">
         <h3 className="panel-h">Depth chart</h3>
-        <p className="muted">No hay roster guardado para esta temporada todavía.</p>
+        <p className="muted">No hay datos de roster disponibles para esta temporada.</p>
       </section>
     );
   }

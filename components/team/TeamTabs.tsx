@@ -14,9 +14,10 @@ interface Props {
   season: string; seasonStats: TeamSeasonStats | null;
   depthChart: DepthGroup[];
   playoffs: PlayoffPicture | null;
+  teamMadePlayoffs: boolean;
 }
 
-export function TeamTabs({ team, games, season, seasonStats, depthChart, playoffs }: Props) {
+export function TeamTabs({ team, games, season, seasonStats, depthChart, playoffs, teamMadePlayoffs }: Props) {
   const [tab, setTab] = useState('games');
   const TABS = [
     { id: 'games', label: 'Games' },
@@ -43,8 +44,12 @@ export function TeamTabs({ team, games, season, seasonStats, depthChart, playoff
         {tab === 'playoffs' && (
           <section className="panel">
             <h3 className="panel-h">Playoffs · {season}</h3>
-            {playoffs ? (
+            {playoffs && teamMadePlayoffs ? (
               <PlayoffBracket picture={playoffs} />
+            ) : playoffs ? (
+              <p className="muted">
+                {team.city} {team.name} no clasificó a los playoffs de la temporada {season}.
+              </p>
             ) : (
               <p className="muted">
                 No hay datos de playoffs para la temporada {season} de {team.city} {team.name}.
@@ -60,8 +65,6 @@ export function TeamTabs({ team, games, season, seasonStats, depthChart, playoff
             <div className="stadium-facts" style={{ marginTop: 16 }}>
               <div className="fact"><span className="fact-k">Ciudad</span><span className="fact-v">{team.city}</span></div>
               <div className="fact"><span className="fact-k">Conferencia</span><span className="fact-v">{team.conf} {team.div}</span></div>
-              <div className="fact"><span className="fact-k">Capacidad</span><span className="fact-v ph-text">00.000</span></div>
-              <div className="fact"><span className="fact-k">Superficie</span><span className="fact-v ph-text">Césped</span></div>
             </div>
           </section>
         )}

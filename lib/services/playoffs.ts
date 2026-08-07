@@ -140,3 +140,16 @@ export async function getPlayoffPicture(season = CURRENT_SEASON): Promise<Playof
 
   return { afc, nfc, champ, sb, real: true };
 }
+
+/**
+ * Whether a team appears anywhere in the bracket (any round, either side).
+ * Seeds/byes aren't real data here (see buildConfBracket) — matchup team
+ * ids are the only reliable signal for "did this team make the playoffs".
+ */
+export function teamInPlayoffPicture(picture: PlayoffPicture, abbr: string): boolean {
+  const inMatchup = (m: PlayoffMatchup) => m.a?.id === abbr || m.b?.id === abbr;
+  const inBracket = (b: ConferenceBracket) =>
+    b.wild.some(inMatchup) || b.divi.some(inMatchup) || inMatchup(b.final);
+
+  return inBracket(picture.afc) || inBracket(picture.nfc) || (picture.sb ? inMatchup(picture.sb) : false);
+}

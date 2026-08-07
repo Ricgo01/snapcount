@@ -67,7 +67,9 @@ function extractTeamStats(rows: TeamStatRow[], abbr: string, gamesPlayed: number
     passYardsPerGame: (row.passingYards / gamesPlayed).toFixed(1),
     rushYardsPerGame: (row.rushingYards / gamesPlayed).toFixed(1),
     sacks:            String(row.defSacks),
-    touchdowns:       String(row.passingTdsTotal + row.rushingTdsTotal + row.receivingTdsTotal + row.defTds + row.specialTeamsTds),
+    // passing_tds and receiving_tds are the same events counted from two
+    // sides at the team level — only add one of them, not both.
+    touchdowns:       String(row.passingTds + row.rushingTds + row.defTds + row.specialTeamsTds),
     thirdDown:        '—',
     defInterceptions: String(row.defInterceptions),
   };

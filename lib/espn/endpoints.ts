@@ -17,10 +17,6 @@ export const espnUrls = {
   /** Historical scoreboard by date range — use for past seasons */
   scoreboardByDates: (dateRange: string) =>
     `${BASE}/scoreboard?dates=${dateRange}&limit=20`,
-
-  /** Full active roster for a team */
-  teamRoster: (espnTeamId: string) =>
-    `${BASE}/teams/${espnTeamId}/roster`,
 } as const;
 
 /** Convert our "2025-26" season string to the ESPN year param (2025) */

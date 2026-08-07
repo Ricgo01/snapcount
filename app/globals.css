@@ -382,7 +382,6 @@ a.match-card{ display:flex; }
 .panel-h{ font-size:16px; font-weight:600; margin-bottom:14px; }
 .muted{ color:var(--muted); font-size:14px; }
 .chronicle{ margin:0; font-size:15.5px; line-height:1.65; color:var(--text); max-width:62ch; }
-.ph-text{ color:var(--muted-2); font-style:italic; }
 
 /* -------------------------- GAME BANNER ------------------------- */
 .game-banner{ position:relative; border-radius:var(--radius) var(--radius) 0 0; overflow:hidden; color:#fff; padding-bottom:48px; }

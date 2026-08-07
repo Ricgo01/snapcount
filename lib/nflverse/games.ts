@@ -55,6 +55,9 @@ function rowToGameRow(cols: string[], idx: Record<string, number>): GameRow | nu
 
   const gameday = get('gameday');
   const gametime = get('gametime');
+  const weekday = get('weekday');
+  const day = WEEKDAY_TO_GAME_DAY[weekday];
+  if (!day) console.warn(`[nflverse] unrecognized weekday "${weekday}" for game ${id}, defaulting to Dom`);
 
   return {
     id,
@@ -63,7 +66,7 @@ function rowToGameRow(cols: string[], idx: Record<string, number>): GameRow | nu
     week,
     season_type: seasonType,
     game_date:   gameday ? `${gameday}T${gametime || '00:00'}:00` : null,
-    day:         WEEKDAY_TO_GAME_DAY[get('weekday')] ?? 'Dom',
+    day:         day ?? 'Dom',
     time:        gametime,
     home_team:   normalizeAbbr(get('home_team')),
     away_team:   normalizeAbbr(get('away_team')),

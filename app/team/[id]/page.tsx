@@ -6,7 +6,7 @@ import { TeamBanner } from '@/components/team/TeamBanner';
 import { TeamTabs } from '@/components/team/TeamTabs';
 import { getTeamDetail } from '@/lib/services/team-detail';
 import { getDepthChart } from '@/lib/services/depth-chart';
-import { getPlayoffPicture } from '@/lib/services/playoffs';
+import { getPlayoffPicture, teamInPlayoffPicture } from '@/lib/services/playoffs';
 import { CURRENT_SEASON } from '@/lib/data';
 import Link from 'next/link';
 
@@ -36,12 +36,13 @@ export default async function TeamPage({ params, searchParams }: Props) {
   if (!detail) notFound();
 
   const { team, recordStr, games, seasonStats } = detail;
+  const teamMadePlayoffs = playoffs ? teamInPlayoffPicture(playoffs, team.id) : false;
   return (
     <div className="screen screen-detail">
       <Link href="/teams" className="detail-back"><Icon name="back" size={18} />Volver</Link>
       <TeamBanner team={team} recordStr={recordStr} season={season} />
-      <TeamTabs team={team} games={games}
-        season={season} seasonStats={seasonStats} depthChart={depthChart} playoffs={playoffs} />
+      <TeamTabs team={team} games={games} season={season} seasonStats={seasonStats}
+        depthChart={depthChart} playoffs={playoffs} teamMadePlayoffs={teamMadePlayoffs} />
     </div>
   );
 }

@@ -80,7 +80,8 @@ export interface PlayerStatsResult {
 
 export interface DepthPlayer {
   name: string;
-  num: number;
+  /** null when unknown — distinct from a real #0, legal since 2023. */
+  num: number | null;
   pos: string;
   depth: number;
   stats: Record<string, string | number>;

@@ -6,6 +6,9 @@ on:
     # Optimization for later: narrow to Thu/Sun/Mon during game hours to save
     # free minutes and Vercel invocations.
     - cron: '*/5 * * * *'
+    # Weekly, Monday 09:00 UTC — refreshes the current season's depth charts
+    # from nflverse (not part of the 5-min refresh; rosters don't change that fast).
+    - cron: '0 9 * * 1'
 
   # Allow manual trigger from the GitHub Actions UI for testing
   workflow_dispatch:
@@ -13,6 +16,7 @@ on:
 jobs:
   refresh:
     name: Invalidate ESPN cache
+    if: github.event.schedule == '*/5 * * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -27,5 +31,32 @@ jobs:
           echo "Response body: $BODY"
           if [ "$STATUS" != "200" ]; then
             echo "Refresh failed with status $STATUS"
+            exit 1
+          fi
+
+  refresh-rosters:
+    name: Refresh current-season depth charts
+    if: github.event.schedule == '0 9 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: POST /api/backfill-rosters (current season)
+        run: |
+          MONTH=$(date +%-m)
+          YEAR=$(date +%Y)
+          # NFL season "year" is the year it started: Jan/Feb games still
+          # belong to the previous calendar year's season.
+          if [ "$MONTH" -le 2 ]; then SEASON=$((YEAR - 1)); else SEASON=$YEAR; fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${{ secrets.APP_URL }}/api/backfill-rosters?season=$SEASON" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          echo "Season: $SEASON"
+          echo "Response status: $STATUS"
+          echo "Response body: $BODY"
+          if [ "$STATUS" != "200" ]; then
+            echo "Roster refresh failed with status $STATUS"
             exit 1
           fi

@@ -107,25 +107,6 @@ export interface EspnBoxScorePlayerTeam {
   statistics: EspnPlayerStatCategory[];
 }
 
-// ── Roster ────────────────────────────────────────────────────────────────
-
-export interface EspnRosterAthlete {
-  id: string;
-  fullName: string;
-  displayName: string;
-  jersey?: string;
-  position: { abbreviation: string; displayName: string; };
-}
-
-export interface EspnRosterGroup {
-  position: string;  // "offense" | "defense" | "specialTeam" | "injuredReserveOrOut" | ...
-  items: EspnRosterAthlete[];
-}
-
-export interface EspnRosterResponse {
-  athletes: EspnRosterGroup[];
-}
-
 export interface EspnSummaryResponse {
   boxscore?: {
     teams?: EspnBoxScoreTeam[];
