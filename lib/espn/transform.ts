@@ -2,9 +2,9 @@
  * ESPN raw response → canonical types (Team, Game, TeamRecord, stats).
  * All functions are pure and throw-safe.
  */
-import type { Game, GameDay, GameStatus, TeamRecord, GameStatsResult, PlayerStatsResult } from '@/types/nfl';
+import type { Game, GameDay, GameStatus, GameStatsResult, PlayerStatsResult } from '@/types/nfl';
 import type {
-  EspnEvent, EspnCompetition, EspnStandingsEntry,
+  EspnEvent, EspnCompetition,
   EspnSummaryResponse, EspnBoxScoreTeam,
 } from './types';
 
@@ -100,20 +100,6 @@ export function espnEventToGame(event: EspnEvent, season: string): Game | null {
     awayScore: isFinal || isLive ? parseScore(awayComp.score) : null,
     quarter:  isLive ? (comp.status.period || null) : null,
     clock:    isLive ? (comp.status.displayClock || null) : null,
-  };
-}
-
-// ── Standings entry → TeamRecord ───────────────────────────────────────────
-
-export function espnStandingsEntryToRecord(entry: EspnStandingsEntry): TeamRecord {
-  const get = (name: string) =>
-    entry.stats.find(s => s.name === name)?.value ?? 0;
-  return {
-    w:  get('wins'),
-    l:  get('losses'),
-    t:  get('ties'),
-    pf: get('pointsFor'),
-    pa: get('pointsAgainst'),
   };
 }
 

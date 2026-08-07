@@ -1,10 +1,9 @@
 import { espnFetch } from '@/lib/espn/client';
 import { espnUrls, seasonToYear, CURRENT_ESPN_YEAR } from '@/lib/espn/endpoints';
-import { espnEventToGame } from '@/lib/espn/transform';
 import { getTeam, CURRENT_SEASON } from '@/lib/data';
 import { getStandings } from './standings';
 import { getTeamSeason } from './history';
-import type { EspnScoreboardResponse, EspnTeamStatsResponse } from '@/lib/espn/types';
+import type { EspnTeamStatsResponse } from '@/lib/espn/types';
 import type { Team, Game, TeamRecord } from '@/types/nfl';
 
 export interface TeamSeasonStats {
@@ -38,8 +37,10 @@ const ESPN_TEAM_IDS: Record<string, string> = {
 
 /**
  * Fetch team profile + season games.
- * Past seasons come from the Supabase game history (exact results + record);
- * the current season uses ESPN live data. Falls back to mock data on failure.
+ * Schedule and record always come from the Supabase game history — the
+ * nflverse-backed cron keeps the current season fresh too, so there's no
+ * more "past vs current season" branch. Season stats (yards, sacks, etc.)
+ * are a separate, still-ESPN-backed endpoint that degrades to null safely.
  */
 export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Promise<TeamDetail | null> {
   const team = getTeam(abbr);
@@ -48,44 +49,16 @@ export async function getTeamDetail(abbr: string, season = CURRENT_SEASON): Prom
   const year = seasonToYear(season);
   const espnId = ESPN_TEAM_IDS[abbr];
 
-  // The record always comes from stored history: exact for past seasons and
-  // cron-updated for the current one (0-0 before kickoff — ESPN's standings
-  // serve the previous season during the offseason, which reads as stale).
   const stored = await getTeamSeason(abbr, year);
+  const games: Game[] = stored?.games ?? [];
 
-  if (year !== CURRENT_ESPN_YEAR && stored) {
-    const r = stored.record;
-    const recString = r.t ? `${r.w}-${r.l}-${r.t}` : `${r.w}-${r.l}`;
-    return { team, record: r, recordStr: recString, games: stored.games, seasonStats: null };
-  }
-
-  // Parallel fetch: schedule + season stats (stats endpoint is current-season only)
-  const [scheduleRaw, statsRaw] = await Promise.all([
-    espnId
-      ? espnFetch<{ events?: EspnScoreboardResponse['events'] }>(
-          espnUrls.teamSchedule(espnId, year),
-          `espn-team-${abbr}`,
-        )
-      : Promise.resolve(null),
-    espnId && year === CURRENT_ESPN_YEAR
-      ? espnFetch<EspnTeamStatsResponse>(
-          espnUrls.teamStats(espnId),
-          `espn-team-stats-${abbr}`,
-          3600,
-        )
-      : Promise.resolve(null),
-  ]);
-
-  // Games
-  let games: Game[] = [];
-  if (scheduleRaw?.events?.length) {
-    games = scheduleRaw.events
-      .map(e => espnEventToGame(e, season))
-      .filter((g): g is Game => g !== null);
-  }
-  if (!games.length) {
-    games = stored?.games ?? [];
-  }
+  const statsRaw = espnId && year === CURRENT_ESPN_YEAR
+    ? await espnFetch<EspnTeamStatsResponse>(
+        espnUrls.teamStats(espnId),
+        `espn-team-stats-${abbr}`,
+        3600,
+      )
+    : null;
 
   // Season stats — hide until games have been played: during the offseason
   // ESPN's stats endpoint still serves the *previous* season's numbers

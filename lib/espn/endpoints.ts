@@ -1,7 +1,5 @@
 // ESPN hidden API — no key required.
-// Base paths differ by endpoint family; both share the same domain.
-const BASE    = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
-const BASE_V2 = 'https://site.api.espn.com/apis/v2/sports/football/nfl';
+const BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 
 export const espnUrls = {
   /** Current week scoreboard (no params) or specific week/season */
@@ -13,19 +11,8 @@ export const espnUrls = {
     return `${BASE}/scoreboard${qs ? `?${qs}` : ''}`;
   },
 
-  /** Standings — NOTE: uses /apis/v2/, not /apis/site/v2/ */
-  standings: (season?: number) =>
-    `${BASE_V2}/standings${season ? `?season=${season}` : ''}`,
-
   /** Full box score + play-by-play for a single game */
   summary: (eventId: string) => `${BASE}/summary?event=${eventId}`,
-
-  /** All 32 NFL teams */
-  teams: () => `${BASE}/teams?limit=32`,
-
-  /** Schedule for one team (seasontype: 1=pre 2=reg 3=post) */
-  teamSchedule: (espnTeamId: string, season: number, seasonType = 2) =>
-    `${BASE}/teams/${espnTeamId}/schedule?season=${season}&seasontype=${seasonType}`,
 
   /** Historical scoreboard by date range — use for past seasons */
   scoreboardByDates: (dateRange: string) =>
@@ -88,20 +75,6 @@ function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10).replace(/-/g, '');
-}
-
-/**
- * Returns a `dates=YYYYMMDD-YYYYMMDD` URL fragment covering the full NFL week
- * (Thu kickoff through Monday night game) for a historical season/week pair.
- * Returns null for the current season or unknown season years.
- */
-export function weekDateRange(year: number, week: number): string | null {
-  const open = SEASON_OPENS[year];
-  if (!open) return null;
-  const weekOffset = (week - 1) * 7;
-  const start = addDays(open, weekOffset);
-  const end   = addDays(open, weekOffset + 6);
-  return `${start}-${end}`;
 }
 
 // ── Playoff date helpers ────────────────────────────────────────────────────

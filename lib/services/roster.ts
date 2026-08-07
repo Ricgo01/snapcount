@@ -1,5 +1,6 @@
 import { supabaseRead, supabaseAdmin } from '@/lib/supabase/server';
 import { normalizeAbbr } from '@/lib/espn/transform';
+import { parseCsvLine } from '@/lib/nflverse/csv';
 import { POSITION_CONFIG, POSITION_ORDER } from './depth-chart';
 import type { DepthGroup, DepthPlayer } from '@/types/nfl';
 
@@ -23,27 +24,6 @@ interface RosterRow {
   depth: number;
   formation: string | null;
   updated_at: string;
-}
-
-// ── CSV parsing (quote-aware, no deps) ──────────────────────────────────────
-
-function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') { cur += '"'; i++; }
-        else inQuotes = false;
-      } else cur += ch;
-    } else if (ch === '"') inQuotes = true;
-    else if (ch === ',') { out.push(cur); cur = ''; }
-    else cur += ch;
-  }
-  out.push(cur);
-  return out;
 }
 
 // ── Write path ───────────────────────────────────────────────────────────────

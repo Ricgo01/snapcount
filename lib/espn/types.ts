@@ -64,34 +64,6 @@ export interface EspnScoreboardResponse {
   events: EspnEvent[];
 }
 
-// ── Standings ──────────────────────────────────────────────────────────────
-
-export interface EspnStandingsStat {
-  name: string;   // "wins" | "losses" | "ties" | "pointsFor" | "pointsAgainst"
-  value: number;
-}
-
-export interface EspnStandingsEntry {
-  team: Pick<EspnTeamRef, 'id' | 'abbreviation' | 'displayName'>;
-  stats: EspnStandingsStat[];
-}
-
-export interface EspnStandingsGroup {
-  name: string;        // "AFC East" etc.
-  abbreviation: string; // "AFCE"
-  standings?: { entries: EspnStandingsEntry[] };
-}
-
-export interface EspnStandingsConference {
-  name: string;        // "American Football Conference"
-  abbreviation: string; // "AFC"
-  children: EspnStandingsGroup[];
-}
-
-export interface EspnStandingsResponse {
-  children: EspnStandingsConference[];
-}
-
 // ── Game summary (box score) ───────────────────────────────────────────────
 
 export interface EspnBoxScoreStat {
